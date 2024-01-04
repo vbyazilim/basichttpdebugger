@@ -1,4 +1,5 @@
 ![Version](https://img.shields.io/badge/version-0.0.0-orange.svg?style=for-the-badge)
+![Powered by Rake](https://img.shields.io/badge/powered_by-rake-blue?logo=ruby&style=for-the-badge)
 
 # Basic HTTP Debugger
 
@@ -9,13 +10,6 @@ debug 3^rd pary webhooks etc...
 
 ## Usage
 
-To run the server;
-
-```bash
-$ go run github.com/vbyazilim/basichttpdebugger                # listens at :9000
-$ HOST=":8000" go run github.com/vbyazilim/basichttpdebugger   # listens at :8000
-```
-
 You can download via;
 
 ```bash
@@ -23,6 +17,20 @@ $ go install github.com/vbyazilim/basichttpdebugger@latest     # install latest 
 $ basichttpdebugger                                            # listens at :9000
 $ HOST=":8000" basichttpdebugger                               # listens at :8000
 ```
+
+Clone the repo and run it locally;
+
+```bash
+$ cd /path/to/go/develompent/
+$ git clone github.com/vbyazilim/basichttpdebugger
+$ cd basichttpdebugger/
+$ go run .                # listens at :9000
+$ HOST=":8000" go run .   # listens at :8000
+
+# or
+$ rake
+```
+
 
 ---
 
