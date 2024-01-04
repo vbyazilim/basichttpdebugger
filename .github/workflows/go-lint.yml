@@ -1,0 +1,22 @@
+name: Golang CI Lint
+
+on:
+  pull_request:
+
+concurrency:
+  group: golangci-lint
+  cancel-in-progress: true
+
+jobs:
+  golangci:
+    name: golangci linter
+    runs-on: ubuntu-latest
+    env:
+      GOPRIVATE: github.com/vbyazilim
+    steps:
+      - uses: actions/checkout@v3
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+          args: --timeout=5m

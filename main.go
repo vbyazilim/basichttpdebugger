@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
 func printHeaders(h http.Header) {
@@ -61,7 +62,14 @@ func main() {
 		host = ":9000"
 	}
 
+	srv := &http.Server{
+		Addr:         host,
+		Handler:      new(server),
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  15 * time.Second,
+	}
+
 	fmt.Println("running server at", host)
-	http.Handle("/", new(server))
-	log.Fatal(http.ListenAndServe(host, nil))
+	log.Fatal(srv.ListenAndServe())
 }

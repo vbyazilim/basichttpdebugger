@@ -33,6 +33,13 @@ $ rake
 
 ---
 
+## TODO
+
+- Add http form requests support
+- Add http file upload requests support
+
+---
+
 ## Rake Tasks
 
 ```bash
