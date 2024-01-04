@@ -31,6 +31,16 @@ $ HOST=":8000" go run .   # listens at :8000
 $ rake
 ```
 
+---
+
+## Rake Tasks
+
+```bash
+$ rake -T
+
+rake release[revision]  # release new version major,minor,patch, default: patch
+rake run                # run server (default port 9000)
+```
 
 ---
 
