@@ -3,7 +3,16 @@ task :default => [:run]
 desc "run server (default port 9000)"
 task :run do
   host = ENV['HOST'] || ":9000"
-  system %{ HOST=#{host} go run . }
+  secret = ENV['HMAC_SECRET']
+  header = ENV['HMAC_HEADER']
+
+  cmd_args = ["-listen", host]
+  cmd_args << "-hmac-secret" << secret if secret
+  cmd_args << "-hmac-header-name" << header if header
+  
+  puts "#{cmd_args}"
+  
+  system %{ go run . #{cmd_args.join(" ")} }
 end
 
 
