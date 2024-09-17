@@ -82,7 +82,7 @@ type server struct{}
 func main() {
 	optHMACSecret = flag.String("hmac-secret", "", "HMAC secret")
 	optHMACHeader = flag.String("hmac-header-name", "", "Signature response header name")
-	optListenADDR = flag.String("listen", ":9000", "Listen address, default: ':9000'")
+	optListenADDR = flag.String("listen", ":9002", "Listen address, default: ':9002'")
 	flag.Parse()
 
 	srv := &http.Server{

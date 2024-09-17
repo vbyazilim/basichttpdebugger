@@ -1,6 +1,11 @@
 ![Version](https://img.shields.io/badge/version-0.1.1-orange.svg)
-![Powered by Rake](https://img.shields.io/badge/powered_by-rake-blue?logo=ruby)
+![Go](https://img.shields.io/github/go-mod/go-version/vbyazilim/basichttpdebugger)
 [![Golang CI Lint](https://github.com/vbyazilim/basichttpdebugger/actions/workflows/go-lint.yml/badge.svg)](https://github.com/vbyazilim/basichttpdebugger/actions/workflows/go-lint.yml)
+![Docker Pulls](https://img.shields.io/docker/pulls/vigo/basichttpdebugger)
+![Docker Size](https://img.shields.io/docker/image-size/vigo/basichttpdebugger)
+![Docker Build Status](https://github.com/vbyazilim/basichttpdebugger/actions/workflows/push-to-dockerhub.yml/badge.svg)
+[![Build and push to GitHub CR](https://github.com/vbyazilim/basichttpdebugger/actions/workflows/push-to-github-cr.yml/badge.svg)](https://github.com/vbyazilim/basichttpdebugger/actions/workflows/push-to-github-cr.yml)
+![Powered by Rake](https://img.shields.io/badge/powered_by-rake-blue?logo=ruby)
 
 # Basic HTTP Debugger
 
@@ -39,9 +44,23 @@ $ HOST=":8000" rake       # listens at :8000
 $ HOST=":8000" HMAC_SECRET="YOURSECRET" HMAC_HEADER="X-HEADER-NAME" rake
 ```
 
+For local docker usage, default expose port is: `9002`. If you set `HOST`
+environment variable to a different value (i.e `:8400`) you must tell docker
+to:
+
+```bash
+docker build -t <your-image> .
+docker run -e HOST=":8400" -p 8400:8400 <your-image>
+```
+
 ---
 
 ## Change Log
+
+**2024-09-17**
+
+- change default host port to `9002`
+- add github actions for docker hub and ghcr
 
 **2024-06-22**
 
