@@ -57,6 +57,11 @@ docker run -e HOST=":8400" -p 8400:8400 <your-image>
 
 ## Change Log
 
+**2024-09-17**
+
+- change default host port to `9002`
+- add github actions for docker hub and ghcr
+
 **2024-06-22**
 
 - remove environment variables from source. only `rake` task requires
