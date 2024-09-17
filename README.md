@@ -54,14 +54,18 @@ docker run -p 8400:8400 <your-image> -listen ":8400"
 docker run -p 8400:8400 <your-image> -listen ":8400" -hmac-secret "YOURSECRET" -hmac-header-name "X-HEADER-NAME"
 ```
 
-You can download/use from docker hub:
+You can download/use from docker hub or ghcr:
 
 https://hub.docker.com/r/vigo/basichttpdebugger/
+https://github.com/vbyazilim/basichttpdebugger/pkgs/container/basichttpdebugger%2Fbasichttpdebugger
 
 ```bash
 docker run vigo/basichttpdebugger
 docker run -p 8400:8400 vigo/basichttpdebugger -listen ":8400"
 docker run -p 9100:9100 vigo/basichttpdebugger -listen ":9100" -hmac-secret "YOURSECRET" -hmac-header-name "X-HEADER-NAME"
+
+docker run ghcr.io/vbyazilim/basichttpdebugger/basichttpdebugger:latest
+docker run -p 9100:9100 ghcr.io/vbyazilim/basichttpdebugger/basichttpdebugger:latest -listen ":9100"
 ```
 
 ---
