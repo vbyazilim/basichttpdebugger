@@ -1,11 +1,14 @@
 package main
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"flag"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 )
@@ -26,8 +29,6 @@ func printHeaders(h http.Header) {
 	fmt.Println(strings.Repeat(".", 40))
 	fmt.Println()
 }
-
-type server struct{}
 
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(strings.Repeat("-", 80))
@@ -50,26 +51,48 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			fmt.Println(bodyStr)
 			fmt.Println(strings.Repeat(".", 40))
 		}
+		if *optHMACSecret != "" && *optHMACHeader != "" {
+			fmt.Println()
+			fmt.Println("hmac validation ........................")
+
+			signature := r.Header.Get(*optHMACHeader)
+			h := hmac.New(sha256.New, []byte(*optHMACSecret))
+			h.Write(body)
+
+			expectedSignature := hex.EncodeToString(h.Sum(nil))
+			fmt.Println("expected signature...", expectedSignature)
+			fmt.Println("incoming signature...", signature)
+			fmt.Println("is valid?............", hmac.Equal([]byte(expectedSignature), []byte(signature)))
+			fmt.Println(strings.Repeat(".", 40))
+		}
 	}
 	fmt.Println(strings.Repeat("-", 80))
 	fmt.Println()
-	fmt.Fprintf(w, "OK")
+	_, _ = fmt.Fprintf(w, "OK")
 }
 
+var (
+	optHMACSecret *string
+	optHMACHeader *string
+	optListenADDR *string
+)
+
+type server struct{}
+
 func main() {
-	host := os.Getenv("HOST")
-	if host == "" {
-		host = ":9002"
-	}
+	optHMACSecret = flag.String("hmac-secret", "", "HMAC secret")
+	optHMACHeader = flag.String("hmac-header-name", "", "Signature response header name")
+	optListenADDR = flag.String("listen", ":9002", "Listen address, default: ':9002'")
+	flag.Parse()
 
 	srv := &http.Server{
-		Addr:         host,
+		Addr:         *optListenADDR,
 		Handler:      new(server),
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  15 * time.Second,
 	}
 
-	fmt.Println("running server at", host)
+	fmt.Println("running server at", *optListenADDR)
 	log.Fatal(srv.ListenAndServe())
 }

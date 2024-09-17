@@ -1,4 +1,4 @@
-![Version](https://img.shields.io/badge/version-0.1.0-orange.svg)
+![Version](https://img.shields.io/badge/version-0.1.1-orange.svg)
 ![Go](https://img.shields.io/github/go-mod/go-version/vbyazilim/basichttpdebugger)
 [![Golang CI Lint](https://github.com/vbyazilim/basichttpdebugger/actions/workflows/go-lint.yml/badge.svg)](https://github.com/vbyazilim/basichttpdebugger/actions/workflows/go-lint.yml)
 ![Docker Pulls](https://img.shields.io/docker/pulls/vigo/basichttpdebugger)
@@ -21,7 +21,10 @@ You can download via;
 ```bash
 $ go install github.com/vbyazilim/basichttpdebugger@latest     # install latest binary
 $ basichttpdebugger                                            # listens at :9000
-$ HOST=":8000" basichttpdebugger                               # listens at :8000
+$ basichttpdebugger -listen ":8000"                            # listens at :8000
+
+# HMAC validation, listens at :8000, check http header name: "X-HEADER-NAME" for HMAC validation.
+$ basichttpdebugger -listen ":8000" -hmac-secret "YOURSECRET" -hmac-header-name "X-HEADER-NAME"
 ```
 
 Clone the repo and run it locally;
@@ -30,19 +33,37 @@ Clone the repo and run it locally;
 $ cd /path/to/go/develompent/
 $ git clone github.com/vbyazilim/basichttpdebugger
 $ cd basichttpdebugger/
-$ go run .                # listens at :9000
-$ HOST=":8000" go run .   # listens at :8000
+$ go run .                  # listens at :9000
+$ go run . -listen ":8000"  # listens at :8000
 
 # or
-$ rake
+$ rake                    # listens at :9000
+$ HOST=":8000" rake       # listens at :8000
+
+# HMAC validation, listens at :8000, check http header name: "X-HEADER-NAME" for HMAC validation.
+$ HOST=":8000" HMAC_SECRET="YOURSECRET" HMAC_HEADER="X-HEADER-NAME" rake
 ```
 
-For docker usage, default expose port is: `9002`. If you set `HOST` environment
-variable to a different value (i.e `:8400`) you must tell docker to:
+For local docker usage, default expose port is: `9002`. If you set `HOST`
+environment variable to a different value (i.e `:8400`) you must tell docker
+to:
 
 ```bash
+docker build -t <your-image> .
 docker run -e HOST=":8400" -p 8400:8400 <your-image>
 ```
+
+---
+
+## Change Log
+
+**2024-06-22**
+
+- remove environment variables from source. only `rake` task requires
+  environment variables
+- add command-line flags: `-listen`, `-hmac-secret`, `-hmac-header-name`,
+  `-h`, `--help`
+- add HMAC validation indicator
 
 ---
 
@@ -58,8 +79,7 @@ docker run -e HOST=":8400" -p 8400:8400 <your-image>
 ```bash
 $ rake -T
 
-rake docker:build       # build docker image locally
-rake docker:run         # run docker image locally
+rake                    # runs default task
 rake release[revision]  # release new version major,minor,patch, default: patch
 rake run                # run server (default port 9000)
 ```
