@@ -1,4 +1,4 @@
-![Version](https://img.shields.io/badge/version-0.1.3-orange.svg)
+![Version](https://img.shields.io/badge/version-0.1.4-orange.svg)
 ![Go](https://img.shields.io/github/go-mod/go-version/vbyazilim/basichttpdebugger)
 [![Golang CI Lint](https://github.com/vbyazilim/basichttpdebugger/actions/workflows/go-lint.yml/badge.svg)](https://github.com/vbyazilim/basichttpdebugger/actions/workflows/go-lint.yml)
 ![Docker Pulls](https://img.shields.io/docker/pulls/vigo/basichttpdebugger)
