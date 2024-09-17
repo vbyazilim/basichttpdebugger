@@ -56,8 +56,8 @@ docker run -p 8400:8400 <your-image> -listen ":8400" -hmac-secret "YOURSECRET" -
 
 You can download/use from docker hub or ghcr:
 
-https://hub.docker.com/r/vigo/basichttpdebugger/
-https://github.com/vbyazilim/basichttpdebugger/pkgs/container/basichttpdebugger%2Fbasichttpdebugger
+- https://hub.docker.com/r/vigo/basichttpdebugger/
+- https://github.com/vbyazilim/basichttpdebugger/pkgs/container/basichttpdebugger%2Fbasichttpdebugger
 
 ```bash
 docker run vigo/basichttpdebugger
