@@ -60,8 +60,8 @@ https://hub.docker.com/r/vigo/basichttpdebugger/
 
 ```bash
 docker run vigo/basichttpdebugger
-docker run vigo/basichttpdebugger -listen ":8400"
-docker run vigo/basichttpdebugger -listen ":8400" -hmac-secret "YOURSECRET" -hmac-header-name "X-HEADER-NAME"
+docker run -p 8400:8400 vigo/basichttpdebugger -listen ":8400"
+docker run -p 9100:9100 vigo/basichttpdebugger -listen ":9100" -hmac-secret "YOURSECRET" -hmac-header-name "X-HEADER-NAME"
 ```
 
 ---
