@@ -50,7 +50,8 @@ For local docker usage, default expose port is: `9002`.
 
 ```bash
 docker build -t <your-image> .
-docker run -p 8400:8400 <your-image> -listen ":8400"
+docker run -p 9002:9002 <your-image>                  # run from default port
+docker run -p 8400:8400 <your-image> -listen ":8400"  # run from 8400
 docker run -p 8400:8400 <your-image> -listen ":8400" -hmac-secret "YOURSECRET" -hmac-header-name "X-HEADER-NAME"
 ```
 
@@ -61,11 +62,20 @@ You can download/use from docker hub or ghcr:
 
 ```bash
 docker run vigo/basichttpdebugger
-docker run -p 8400:8400 vigo/basichttpdebugger -listen ":8400"
+docker run -p 9002:9002 vigo/basichttpdebugger                    # run from default port
+docker run -p 8400:8400 vigo/basichttpdebugger -listen ":8400"    # run from 8400
+
+# run from docker hub on port 9100 with hmac support
 docker run -p 9100:9100 vigo/basichttpdebugger -listen ":9100" -hmac-secret "YOURSECRET" -hmac-header-name "X-HEADER-NAME"
 
-docker run ghcr.io/vbyazilim/basichttpdebugger/basichttpdebugger:latest
+# run from ghcr on default port
+docker run -p 9002:9002 ghcr.io/vbyazilim/basichttpdebugger/basichttpdebugger:latest
+
+# run from ghcr on 9100
 docker run -p 9100:9100 ghcr.io/vbyazilim/basichttpdebugger/basichttpdebugger:latest -listen ":9100"
+
+# run from ghcr on 9100 with hmac support
+docker run -p 9100:9100 ghcr.io/vbyazilim/basichttpdebugger/basichttpdebugger:latest -listen ":9100" -hmac-secret "YOURSECRET" -hmac-header-name "X-HEADER-NAME"
 ```
 
 ---
