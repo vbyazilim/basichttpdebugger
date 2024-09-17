@@ -1,6 +1,11 @@
 ![Version](https://img.shields.io/badge/version-0.1.0-orange.svg)
-![Powered by Rake](https://img.shields.io/badge/powered_by-rake-blue?logo=ruby)
+![Go](https://img.shields.io/github/go-mod/go-version/vbyazilim/basichttpdebugger)
 [![Golang CI Lint](https://github.com/vbyazilim/basichttpdebugger/actions/workflows/go-lint.yml/badge.svg)](https://github.com/vbyazilim/basichttpdebugger/actions/workflows/go-lint.yml)
+![Docker Pulls](https://img.shields.io/docker/pulls/vigo/basichttpdebugger)
+![Docker Size](https://img.shields.io/docker/image-size/vigo/basichttpdebugger)
+![Docker Build Status](https://github.com/vbyazilim/basichttpdebugger/actions/workflows/push-to-dockerhub.yml/badge.svg)
+[![Build and push to GitHub CR](https://github.com/vbyazilim/basichttpdebugger/actions/workflows/push-to-github-cr.yml/badge.svg)](https://github.com/vbyazilim/basichttpdebugger/actions/workflows/push-to-github-cr.yml)
+![Powered by Rake](https://img.shields.io/badge/powered_by-rake-blue?logo=ruby)
 
 # Basic HTTP Debugger
 
