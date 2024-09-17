@@ -34,3 +34,21 @@ task :release, [:revision] => [:is_repo_clean] do |_, args|
   args.with_defaults(revision: 'patch')
   Rake::Task['bump'].invoke(args.revision)
 end
+
+DOCKER_IMAGE_NAME = "basichttpdebugger:latest"
+
+namespace :docker do
+  desc "build docker image locally"
+  task :build do
+    system %{
+      docker build -t #{DOCKER_IMAGE_NAME} .
+    }
+  end
+
+  desc "run docker image locally"
+  task :run do
+    system %{
+      docker run -p "9002:9002" #{DOCKER_IMAGE_NAME}
+    }
+  end
+end

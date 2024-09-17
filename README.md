@@ -32,6 +32,13 @@ $ HOST=":8000" go run .   # listens at :8000
 $ rake
 ```
 
+For docker usage, default expose port is: `9002`. If you set `HOST` environment
+variable to a different value (i.e `:8400`) you must tell docker to:
+
+```bash
+docker run -e HOST=":8400" -p 8400:8400 <your-image>
+```
+
 ---
 
 ## TODO
@@ -46,6 +53,8 @@ $ rake
 ```bash
 $ rake -T
 
+rake docker:build       # build docker image locally
+rake docker:run         # run docker image locally
 rake release[revision]  # release new version major,minor,patch, default: patch
 rake run                # run server (default port 9000)
 ```

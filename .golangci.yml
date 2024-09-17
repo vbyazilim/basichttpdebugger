@@ -43,23 +43,11 @@ linters-settings:
       - unreachable
       - unsafeptr
       - unusedresult
-  wrapcheck:
-    ignoreSigs:
-      - madhttperror.New(
-      - .Errorf(
-      - errors.New(
-      - errors.Unwrap(
-      - .Wrap(
-      - .Wrapf(
-      - .WithMessage(
-      - .WithMessagef(
-      - .WithStack(
-      - .WrapError(
-    ignoreSigRegexps:
-      - \.New.*Error\(
-    ignorePackageGlobs:
-      - encoding/*
-      - github.com/pkg/*
+
+  errcheck:
+    exclude-functions:
+      - fmt.Fprintf
+
   revive:
     ignore-generated-header: true
     severity: warning

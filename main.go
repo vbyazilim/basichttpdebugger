@@ -59,7 +59,7 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func main() {
 	host := os.Getenv("HOST")
 	if host == "" {
-		host = ":9000"
+		host = ":9002"
 	}
 
 	srv := &http.Server{
