@@ -22,4 +22,4 @@ COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certifica
 COPY --from=builder /build/server /server
 
 EXPOSE 9002
-CMD ["/server"]
+ENTRYPOINT ["/server"]

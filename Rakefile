@@ -1,8 +1,8 @@
 task :default => [:run]
 
-desc "run server (default port 9000)"
+desc "run server (default port 9002)"
 task :run do
-  host = ENV['HOST'] || ":9000"
+  host = ENV['HOST'] || ":9002"
   secret = ENV['HMAC_SECRET']
   header = ENV['HMAC_HEADER']
 

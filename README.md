@@ -20,7 +20,7 @@ You can download via;
 
 ```bash
 $ go install github.com/vbyazilim/basichttpdebugger@latest     # install latest binary
-$ basichttpdebugger                                            # listens at :9000
+$ basichttpdebugger                                            # listens at :9002
 $ basichttpdebugger -listen ":8000"                            # listens at :8000
 
 # HMAC validation, listens at :8000, check http header name: "X-HEADER-NAME" for HMAC validation.
@@ -33,24 +33,35 @@ Clone the repo and run it locally;
 $ cd /path/to/go/develompent/
 $ git clone github.com/vbyazilim/basichttpdebugger
 $ cd basichttpdebugger/
-$ go run .                  # listens at :9000
+$ go run .                  # listens at :9002
 $ go run . -listen ":8000"  # listens at :8000
 
 # or
-$ rake                    # listens at :9000
+$ rake                    # listens at :9002
 $ HOST=":8000" rake       # listens at :8000
 
 # HMAC validation, listens at :8000, check http header name: "X-HEADER-NAME" for HMAC validation.
 $ HOST=":8000" HMAC_SECRET="YOURSECRET" HMAC_HEADER="X-HEADER-NAME" rake
 ```
 
-For local docker usage, default expose port is: `9002`. If you set `HOST`
-environment variable to a different value (i.e `:8400`) you must tell docker
-to:
+Environment variables are only valid for `rake` usage!
+
+For local docker usage, default expose port is: `9002`.
 
 ```bash
 docker build -t <your-image> .
-docker run -e HOST=":8400" -p 8400:8400 <your-image>
+docker run -p 8400:8400 <your-image> -listen ":8400"
+docker run -p 8400:8400 <your-image> -listen ":8400" -hmac-secret "YOURSECRET" -hmac-header-name "X-HEADER-NAME"
+```
+
+You can download/use from docker hub:
+
+https://hub.docker.com/r/vigo/basichttpdebugger/
+
+```bash
+docker run vigo/basichttpdebugger
+docker run vigo/basichttpdebugger -listen ":8400"
+docker run vigo/basichttpdebugger -listen ":8400" -hmac-secret "YOURSECRET" -hmac-header-name "X-HEADER-NAME"
 ```
 
 ---
@@ -84,9 +95,10 @@ docker run -e HOST=":8400" -p 8400:8400 <your-image>
 ```bash
 $ rake -T
 
-rake                    # runs default task
+rake docker:build       # build docker image locally
+rake docker:run         # run docker image locally
 rake release[revision]  # release new version major,minor,patch, default: patch
-rake run                # run server (default port 9000)
+rake run                # run server (default port 9002)
 ```
 
 ---
