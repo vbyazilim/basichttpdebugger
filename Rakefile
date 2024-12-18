@@ -10,8 +10,6 @@ task :run do
   cmd_args << "-hmac-secret" << secret if secret
   cmd_args << "-hmac-header-name" << header if header
   
-  puts "#{cmd_args}"
-  
   system %{ go run . #{cmd_args.join(" ")} }
 end
 
