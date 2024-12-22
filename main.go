@@ -38,6 +38,7 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	printHeaders(r.Header)
 
 	body, err := io.ReadAll(r.Body)
+	defer func() { _ = r.Body.Close() }()
 
 	fmt.Println("error ..................................")
 	fmt.Println(err)
@@ -46,11 +47,27 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if err == nil {
 		bodyStr := string(body)
+
+		acceptHeader := r.Header.Get("Accept")
+		fmt.Printf("acceptHeader: %+v\n", acceptHeader)
+
 		if len(bodyStr) > 0 {
 			fmt.Println("body ...................................")
+
 			fmt.Println(bodyStr)
+
+			// var jsonBody map[string]any
+			//
+			// if err := json.Unmarshal(body, &jsonBody); err != nil {
+			// 	fmt.Println(bodyStr)
+			// } else {
+			// 	prettyJSON, err := json.MarshalIndent(jsonBody, "", "  ")
+			//
+			// }
+
 			fmt.Println(strings.Repeat(".", 40))
 		}
+
 		if *optHMACSecret != "" && *optHMACHeader != "" {
 			fmt.Println()
 			fmt.Println("hmac validation ........................")
@@ -59,7 +76,7 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h := hmac.New(sha256.New, []byte(*optHMACSecret))
 			h.Write(body)
 
-			expectedSignature := hex.EncodeToString(h.Sum(nil))
+			expectedSignature := "sha256=" + hex.EncodeToString(h.Sum(nil))
 			fmt.Println("expected signature...", expectedSignature)
 			fmt.Println("incoming signature...", signature)
 			fmt.Println("is valid?............", hmac.Equal([]byte(expectedSignature), []byte(signature)))

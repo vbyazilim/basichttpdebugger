@@ -41,7 +41,7 @@ $ rake                    # listens at :9002
 $ HOST=":8000" rake       # listens at :8000
 
 # HMAC validation, listens at :8000, check http header name: "X-HEADER-NAME" for HMAC validation.
-$ HOST=":8000" HMAC_SECRET="YOURSECRET" HMAC_HEADER="X-HEADER-NAME" rake
+$ HOST=":8000" HMAC_SECRET="YOURSECRET" HMAC_HEADER_NAME="X-HEADER-NAME" rake
 ```
 
 Environment variables are only valid for `rake` usage!

@@ -4,11 +4,11 @@ desc "run server (default port 9002)"
 task :run do
   host = ENV['HOST'] || ":9002"
   secret = ENV['HMAC_SECRET']
-  header = ENV['HMAC_HEADER']
+  header_name = ENV['HMAC_HEADER_NAME']
 
   cmd_args = ["-listen", host]
   cmd_args << "-hmac-secret" << secret if secret
-  cmd_args << "-hmac-header-name" << header if header
+  cmd_args << "-hmac-header-name" << header_name if header_name
   
   system %{ go run . #{cmd_args.join(" ")} }
 end
