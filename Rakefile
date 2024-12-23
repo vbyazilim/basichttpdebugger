@@ -11,6 +11,7 @@ task :run do
   cmd_args << "-hmac-header-name" << header_name if header_name
   
   system %{ go run . #{cmd_args.join(" ")} }
+  exit $?.exitstatus
 end
 
 
@@ -50,6 +51,7 @@ namespace :docker do
     system %{
       docker build -t #{DOCKER_IMAGE_NAME} .
     }
+    exit $?.exitstatus
   end
 
   desc "run docker image locally"
@@ -57,5 +59,6 @@ namespace :docker do
     system %{
       docker run -p "9002:9002" #{DOCKER_IMAGE_NAME}
     }
+    exit $?.exitstatus
   end
 end

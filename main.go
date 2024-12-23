@@ -1,115 +1,103 @@
 package main
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
-	"strings"
+	"os"
 	"time"
+
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/vigo/accept"
 )
 
-func printHeaders(h http.Header) {
-	maxLen := 0
-	for k := range h {
-		if len(k) > maxLen {
-			maxLen = len(k)
-		}
-	}
-
-	fmt.Println("http request headers ...................")
-	for k, v := range h {
-		dots := strings.Repeat(".", maxLen-len(k)+1)
-		fmt.Printf("%s %s %v\n", k, dots, v)
-	}
-	fmt.Println(strings.Repeat(".", 40))
-	fmt.Println()
-}
-
-func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Println(strings.Repeat("-", 80))
-	fmt.Println("method ...... ", r.Method)
-	fmt.Println()
-
-	printHeaders(r.Header)
-
-	body, err := io.ReadAll(r.Body)
-	defer func() { _ = r.Body.Close() }()
-
-	fmt.Println("error ..................................")
-	fmt.Println(err)
-	fmt.Println(strings.Repeat(".", 40))
-	fmt.Println()
-
-	if err == nil {
-		bodyStr := string(body)
-
-		acceptHeader := r.Header.Get("Accept")
-		fmt.Printf("acceptHeader: %+v\n", acceptHeader)
-
-		if len(bodyStr) > 0 {
-			fmt.Println("body ...................................")
-
-			fmt.Println(bodyStr)
-
-			// var jsonBody map[string]any
-			//
-			// if err := json.Unmarshal(body, &jsonBody); err != nil {
-			// 	fmt.Println(bodyStr)
-			// } else {
-			// 	prettyJSON, err := json.MarshalIndent(jsonBody, "", "  ")
-			//
-			// }
-
-			fmt.Println(strings.Repeat(".", 40))
-		}
-
-		if *optHMACSecret != "" && *optHMACHeader != "" {
-			fmt.Println()
-			fmt.Println("hmac validation ........................")
-
-			signature := r.Header.Get(*optHMACHeader)
-			h := hmac.New(sha256.New, []byte(*optHMACSecret))
-			h.Write(body)
-
-			expectedSignature := "sha256=" + hex.EncodeToString(h.Sum(nil))
-			fmt.Println("expected signature...", expectedSignature)
-			fmt.Println("incoming signature...", signature)
-			fmt.Println("is valid?............", hmac.Equal([]byte(expectedSignature), []byte(signature)))
-			fmt.Println(strings.Repeat(".", 40))
-		}
-	}
-	fmt.Println(strings.Repeat("-", 80))
-	fmt.Println()
-	_, _ = fmt.Fprintf(w, "OK")
-}
+const (
+	defReadTimeout       = 5 * time.Second
+	defReadHeaderTimeout = 5 * time.Second
+	defWriteTimeout      = 10 * time.Second
+	defIdleTimeout       = 15 * time.Second
+)
 
 var (
-	optHMACSecret *string
-	optHMACHeader *string
-	optListenADDR *string
+	defHMACSecret     string
+	defHMACHeaderName = "X-Hub-Signature-256"
+	defListenAddr     = ":9002"
 )
 
-type server struct{}
-
 func main() {
-	optHMACSecret = flag.String("hmac-secret", "", "HMAC secret")
-	optHMACHeader = flag.String("hmac-header-name", "", "Signature response header name")
-	optListenADDR = flag.String("listen", ":9002", "Listen address, default: ':9002'")
-	flag.Parse()
-
-	srv := &http.Server{
-		Addr:         *optListenADDR,
-		Handler:      new(server),
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  15 * time.Second,
+	if val := os.Getenv("HMAC_SECRET"); val != "" {
+		defHMACSecret = val
+	}
+	if val := os.Getenv("HMAC_HEADER_NAME"); val != "" {
+		defHMACHeaderName = val
+	}
+	if val := os.Getenv("HOST"); val != "" {
+		defListenAddr = val
 	}
 
-	fmt.Println("running server at", *optListenADDR)
-	log.Fatal(srv.ListenAndServe())
+	hmacSecretValue := flag.String("hmac-secret", defHMACSecret, "your HMAC secret value")
+	hmacHeaderName := flag.String(
+		"hmac-header-name",
+		defHMACHeaderName,
+		"name of your signature header",
+	)
+	listenAddr := flag.String("listen", defListenAddr, "listen addr")
+	flag.Parse()
+
+	fmt.Println("hmacSecretValue", *hmacSecretValue)
+	fmt.Println("hmacHeaderName", *hmacHeaderName)
+
+	cn := accept.New(
+		accept.WithSupportedMediaTypes("text/plain"),
+		accept.WithDefaultMediaType("text/plain"),
+	)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", debugHandlerFunc(cn))
+
+	server := &http.Server{
+		Addr:              *listenAddr,
+		Handler:           mux,
+		ReadTimeout:       defReadTimeout,
+		ReadHeaderTimeout: defReadHeaderTimeout,
+		WriteTimeout:      defWriteTimeout,
+		IdleTimeout:       defIdleTimeout,
+	}
+
+	log.Printf("server listening at %s\n", *listenAddr)
+	log.Fatal(server.ListenAndServe())
+}
+
+func debugHandlerFunc(cn *accept.ContentNegotiation) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		acceptHeader := r.Header.Get("Accept")
+		contentType := cn.Negotiate(acceptHeader)
+
+		t := table.NewWriter()
+		t.SetOutputMirror(w)
+		t.SetTitle("Debug")
+		t.AppendRows([]table.Row{
+			{"HTTP Method", r.Method},
+			{"Matching Content-Type", contentType},
+		})
+		// t.AppendHeader(table.Row{"Method", "Value"})
+		// t.AppendSeparator()
+		t.Render()
+
+		t2 := table.NewWriter()
+		t2.SetOutputMirror(w)
+		t2.SetTitle("Request Headers")
+		// t2.AppendHeader(table.Row{"Header", "Value"})
+
+		for _, v := range r.Header {
+			t2.AppendRow(table.Row{v})
+		}
+
+		t2.Render()
+
+		// w.Header().Set("Content-Type", contentType)
+		// log.Printf("acceptHeader: %s\n", acceptHeader)
+		// log.Printf("contentType: %s\n", contentType)
+	}
 }
