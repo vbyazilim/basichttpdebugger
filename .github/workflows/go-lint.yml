@@ -1,22 +1,31 @@
-name: Golang CI Lint
+name: golangci-lint
 
 on:
   pull_request:
+    paths:
+      - '**.go'
+  push:
+    branches:
+      - main
+    paths:
+      - '**.go'
 
 concurrency:
-  group: golangci-lint
+  group: basichttpdebugger-golangci-lint
   cancel-in-progress: true
 
 jobs:
   golangci:
     name: golangci linter
-    runs-on: ubuntu-latest
-    env:
-      GOPRIVATE: github.com/vbyazilim
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
-          version: latest
+          go-version-file: "go.mod"
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.62
           args: --timeout=5m
