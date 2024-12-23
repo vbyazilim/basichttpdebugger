@@ -26,5 +26,5 @@ replace = "version-{new_version}-orange.svg"
 
 [[tool.bumpversion.files]]
 filename = "release/release.go"
-search = const Version string = "{current_version}"
-replace = const Version string = "{new_version}"
+search = "{current_version}"
+replace = "{new_version}"
