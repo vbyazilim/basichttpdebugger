@@ -36,6 +36,7 @@ var (
 	defHMACHeaderName = "X-Hub-Signature-256"
 	defListenAddr     = ":9002"
 	defOutput         = "stdout"
+	defColor          bool
 )
 
 func main() {
@@ -51,16 +52,22 @@ func main() {
 	if val := os.Getenv("OUTPUT"); val != "" {
 		defOutput = val
 	}
+	if val := os.Getenv("COLOR"); val != "" {
+		defColor = true
+	}
 
 	hmacSecretValue := flag.String("hmac-secret", defHMACSecret, "your HMAC secret value")
-	hmacHeaderName := flag.String(
-		"hmac-header-name",
-		defHMACHeaderName,
-		"name of your signature header",
-	)
+	hmacHeaderName := flag.String("hmac-header-name", defHMACHeaderName, "name of your signature header")
 	listenAddr := flag.String("listen", defListenAddr, "listen addr")
+	color := flag.Bool("color", defColor, "enable color")
 	output := flag.String("output", defOutput, "output to")
 	flag.Parse()
+
+	if *color {
+		text.EnableColors()
+	} else {
+		text.DisableColors()
+	}
 
 	var outputWriter *os.File
 
@@ -118,6 +125,8 @@ func errorAsTable(fwriter *os.File, title string, err error) {
 
 func debugHandlerFunc(cn *accept.ContentNegotiation, fwriter *os.File, hmsv string, hmhn string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		terminalWidth := getTerminalWidth()
+
 		acceptHeader := r.Header.Get("Accept")
 		requestContentType := r.Header.Get("Content-Type")
 		contentType := cn.Negotiate(acceptHeader)
@@ -126,8 +135,9 @@ func debugHandlerFunc(cn *accept.ContentNegotiation, fwriter *os.File, hmsv stri
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, "OK")
 
-		mainTitle := "Basic HTTP Debugger - v" + release.Version + " - " + release.BuildInformation
+		mainTitle := "Basic HTTP Debugger - v" + release.Version + release.BuildInformation
 
+		fmt.Fprintln(fwriter, strings.Repeat("-", terminalWidth))
 		t := table.NewWriter()
 		t.SetOutputMirror(fwriter)
 		t.SetTitle(text.Colors{text.Bold, text.FgWhite}.Sprint(mainTitle))
@@ -148,7 +158,7 @@ func debugHandlerFunc(cn *accept.ContentNegotiation, fwriter *os.File, hmsv stri
 
 		t.SetColumnConfigs([]table.ColumnConfig{
 			{Number: 1, Colors: text.Colors{text.FgYellow}},
-			{Number: 2, WidthMax: (getTerminalWidth() / 2) - 2},
+			{Number: 2, WidthMax: (terminalWidth / 2) - 2},
 		})
 
 		headerKeys := make([]string, 0, len(r.Header))
@@ -214,10 +224,12 @@ func debugHandlerFunc(cn *accept.ContentNegotiation, fwriter *os.File, hmsv stri
 
 					return
 				}
-				fmt.Fprint(fwriter, string(prettyJSON))
+				fmt.Fprintln(fwriter, string(prettyJSON))
 			default:
-				fmt.Fprint(fwriter, string(body))
+				fmt.Fprintln(fwriter, string(body))
 			}
+
+			fmt.Fprintln(fwriter, strings.Repeat("-", terminalWidth))
 		}
 	}
 }

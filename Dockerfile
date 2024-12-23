@@ -1,8 +1,12 @@
-FROM golang:1.21-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 WORKDIR /build
 COPY . .
-RUN GOOS=linux CGO_ENABLED=0 GOARCH=amd64 go build -o server .
+
+ARG GOOS
+ARG GOARCH
+ARG BUILD_INFORMATION
+RUN CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} go build -ldflags="-X 'github.com/vbyazilim/basichttpdebugger/release.BuildInformation=${BUILD_INFORMATION}'" -o server .
 
 FROM alpine:latest AS certs
 RUN apk add --update --no-cache ca-certificates

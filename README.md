@@ -16,45 +16,68 @@ debug 3^rd pary webhooks etc...
 
 ## Usage
 
-You can download via;
+You can install directly the latest version if you have go installation;
 
 ```bash
-$ go install github.com/vbyazilim/basichttpdebugger@latest     # install latest binary
-$ basichttpdebugger                                            # listens at :9002
-$ basichttpdebugger -listen ":8000"                            # listens at :8000
-
-# HMAC validation, listens at :8000, check http header name: "X-HEADER-NAME" for HMAC validation.
-$ basichttpdebugger -listen ":8000" -hmac-secret "YOURSECRET" -hmac-header-name "X-HEADER-NAME"
-
-# instead of stdout, pipe everything to file!
-$ basichttpdebugger -listen ":8000" -hmac-secret "YOURSECRET" -hmac-header-name "X-HEADER-NAME" -output "/tmp/foo"
-
-# now, open another terminal window and
-$ tail -f /tmp/foo
+go install github.com/vbyazilim/basichttpdebugger@latest
 ```
 
-Clone the repo and run it locally;
+Then run:
 
 ```bash
-$ cd /path/to/go/develompent/
-$ git clone github.com/vbyazilim/basichttpdebugger
-$ cd basichttpdebugger/
-$ go run .                  # listens at :9002
-$ go run . -listen ":8000"  # listens at :8000
+basichttpdebugger -h                # help
+```
 
-# or
-$ rake                    # listens at :9002
-$ HOST=":8000" rake       # listens at :8000
+Start the server;
 
-# HMAC validation, listens at :8000, check http header name: "X-HEADER-NAME" for HMAC validation.
-$ HOST=":8000" HMAC_SECRET="YOURSECRET" HMAC_HEADER_NAME="X-HEADER-NAME" rake
+```bash
+basichttpdebugger                   # listens at :9002
+```
 
-# HMAC validation, listens at :8000, check http header name: "X-HEADER-NAME" for HMAC validation and pipe to "/tmp/foo"
-$ HOST=":8000" HMAC_SECRET="YOURSECRET" HMAC_HEADER_NAME="X-HEADER-NAME" OUTPUT="/tmp/foo" rake
+Listen different port:
 
-# get flag help
-$ go run . -h
+```bash
+basichttpdebugger -listen ":8000"    # listens at :8000
+```
+
+If you want to test HMAC validation;
+
+```bash
+basichttpdebugger  -listen ":8000" -hmac-secret "<secret>" -hmac-header-name "<X-HEADER-NAME>"
+```
+
+Instead of standard output, pipe everything to file!
+
+```bash
+basichttpdebugger -listen ":8000" -hmac-secret "<secret>" -hmac-header-name "<X-HEADER-NAME>" -output "/tmp/foo"
+```
+
+Now, tail `/tmp/foo`:
+
+```bash
+tail -f /tmp/foo
+```
+
+Well, add some colors :)
+
+```bash
+basichttpdebugger -listen ":8000" -color true
+```
+
+If you pipe output to a file, keep colors off. Enabling colors will include
+ANSI escape sequences in the file as well.
+
+You can also clone the source repo and run it locally;
+
+```bash
+cd /path/to/go/develompent/
+git clone github.com/vbyazilim/basichttpdebugger
+cd basichttpdebugger/
+
+go run . -h               # help
 Usage of basichttpdebugger:
+  -color
+    	enable color
   -hmac-header-name string
     	name of your signature header (default "X-Hub-Signature-256")
   -hmac-secret string
@@ -63,6 +86,17 @@ Usage of basichttpdebugger:
     	listen addr (default ":9002")
   -output string
     	output to (default "stdout")
+
+go run .                  # starts server, listens at :9002
+
+go run . -listen ":8000"  # listens at :8000
+
+# or if you have ruby installed, use rake tasks!
+rake                      # listens at :9002
+
+HOST=":8000" rake         # listens at :8000
+HOST=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" rake
+HOST=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" OUTPUT="/tmp/foo" rake
 ```
 
 ---
@@ -73,6 +107,7 @@ Usage of basichttpdebugger:
 |:-----|:---------------------|---------------|
 | `-hmac-header-name` | `HMAC_HEADER_NAME` | `X-Hub-Signature-256` |
 | `-hmac-secret` | `HMAC_SECRET` | Not set |
+| `-color` | `COLOR` | `false` |
 | `-listen` | `HOST` | `:9002` |
 | `-output` | `OUTPUT` | `stdout` |
 
@@ -80,23 +115,106 @@ Usage of basichttpdebugger:
 
 ## Output
 
-Here is how it looks a GitHub webhook:
+Here is how it looks, a GitHub webhook (trimmed, masked due to it’s huge data):
 
-
+    +---------------------------------------------+
+    | Basic HTTP Debugger - v0.1.4 - 1f15065600c8 |
+    +-----------------------+---------------------+
+    | HTTP Method           | POST                |
+    | Matching Content-Type | text/plain          |
+    +-----------------------+---------------------+
+    +-------------------------------------------------------------------------------------------+
+    | Request Headers                                                                           |
+    +----------------------------------------+--------------------------------------------------+
+    | Accept                                 | */*                                              |
+    | Accept-Encoding                        | gzip                                             |
+    | Content-Length                         | 9853                                             |
+    | Content-Type                           | application/json                                 |
+    | User-Agent                             | GitHub-Hookshot/68d5600                          |
+    | X-Forwarded-For                        | ***.**.***.**                                    |
+    | X-Forwarded-Host                       | ******-******-******.ngrok-free.app              |
+    | X-Forwarded-Proto                      | https                                            |
+    | X-Github-Delivery                      | 6b2db120-bfe4-11ef-91e7-6e465723772e             |
+    | X-Github-Event                         | issues                                           |
+    | X-Github-Hook-Id                       | 519902493                                        |
+    | X-Github-Hook-Installation-Target-Id   | 906427850                                        |
+    | X-Github-Hook-Installation-Target-Type | repository                                       |
+    | X-Hub-Signature                        | sha1=aea0d3b6577832e464**********************    |
+    | X-Hub-Signature-256                    | sha256=4b24fa2a16d12887665********************** |
+    |                                        | ********************002                          |
+    +----------------------------------------+--------------------------------------------------+
+    +----------------------------------------------------------------------------------------------+
+    | HMAC Validation                                                                              |
+    +--------------------+-------------------------------------------------------------------------+
+    | HMAC Secret Value  | **********                                                              |
+    | HMAC Header Name   | X-Hub-Signature-256                                                     |
+    | Incoming Signature | sha256=4b24fa2a16d128************************************************** |
+    | Expected Signature | sha256=4b24fa2a16d128************************************************** |
+    | Is Valid?          | true                                                                    |
+    +--------------------+-------------------------------------------------------------------------+
+    {
+        "action": "closed",
+        "issue": {
+            "active_lock_reason": null,
+            "assignee": null,
+            "assignees": [],
+            :
+            :
+            "reactions": {
+                "+1": 0,
+                "-1": 0,
+                :
+                :
+            },
+            "repository_url": "https://api.github.com/repos/<github-org>/<repo>",
+            "state": "closed",
+            "state_reason": "not_planned",
+            "timeline_url": "https://api.github.com/repos/<github-org>/<repo>/issues/6/timeline",
+            :
+            "user": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/82952?v=4",
+                :
+                :
+            }
+        },
+        "organization": {
+            "avatar_url": "https://avatars.githubusercontent.com/u/159630054?v=4",
+            :
+            :
+        },
+        "repository": {
+            "allow_forking": false,
+            :
+            :
+            "open_issues": 3,
+            "open_issues_count": 3,
+            "owner": {
+                "avatar_url": "https://avatars.githubusercontent.com/u/159630054?v=4",
+                :
+                :
+            },
+            :
+            :
+        },
+        "sender": {
+            "avatar_url": "https://avatars.githubusercontent.com/u/82952?v=4",
+            :
+            :
+        }
+    }
 
 ---
 
 ## Docker
 
----
-
 For local docker usage, default expose port is: `9002`.
 
 ```bash
 docker build -t <your-image> .
+
 docker run -p 9002:9002 <your-image>                  # run from default port
 docker run -p 8400:8400 <your-image> -listen ":8400"  # run from 8400
-docker run -p 8400:8400 <your-image> -listen ":8400" -hmac-secret "YOURSECRET" -hmac-header-name "X-HEADER-NAME"
+docker run -p 8400:8400 <your-image> -listen ":8400" -hmac-secret "<secret>" -hmac-header-name "<X-HEADER-NAME>"
 ```
 
 You can download/use from docker hub or ghcr:
@@ -106,11 +224,12 @@ You can download/use from docker hub or ghcr:
 
 ```bash
 docker run vigo/basichttpdebugger
+
 docker run -p 9002:9002 vigo/basichttpdebugger                    # run from default port
 docker run -p 8400:8400 vigo/basichttpdebugger -listen ":8400"    # run from 8400
 
 # run from docker hub on port 9100 with hmac support
-docker run -p 9100:9100 vigo/basichttpdebugger -listen ":9100" -hmac-secret "YOURSECRET" -hmac-header-name "X-HEADER-NAME"
+docker run -p 9100:9100 vigo/basichttpdebugger -listen ":9100" -hmac-secret "<secret>" -hmac-header-name "<X-HEADER-NAME>"
 
 # run from ghcr on default port
 docker run -p 9002:9002 ghcr.io/vbyazilim/basichttpdebugger/basichttpdebugger:latest
@@ -119,7 +238,7 @@ docker run -p 9002:9002 ghcr.io/vbyazilim/basichttpdebugger/basichttpdebugger:la
 docker run -p 9100:9100 ghcr.io/vbyazilim/basichttpdebugger/basichttpdebugger:latest -listen ":9100"
 
 # run from ghcr on 9100 with hmac support
-docker run -p 9100:9100 ghcr.io/vbyazilim/basichttpdebugger/basichttpdebugger:latest -listen ":9100" -hmac-secret "YOURSECRET" -hmac-header-name "X-HEADER-NAME"
+docker run -p 9100:9100 ghcr.io/vbyazilim/basichttpdebugger/basichttpdebugger:latest -listen ":9100" -hmac-secret "<secret>" -hmac-header-name "<X-HEADER-NAME>"
 ```
 
 ---
