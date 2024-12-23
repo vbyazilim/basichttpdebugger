@@ -1,0 +1,17 @@
+**/.DS_Store
+**/.dockerignore
+**/.env
+**/.git
+**/.github
+**/.gitignore
+**/Dockerfile*
+**/tmp*
+**/.pre-commit-config.yaml
+**/.bumpversion.toml
+**/.tm_properties
+**/Rakefile
+**/.golangci.yml
+**/CODE_OF_CONDUCT.md
+**/CONTRIBUTING.md
+**/SECURITY.md
+**/README.md

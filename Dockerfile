@@ -27,3 +27,6 @@ COPY --from=builder /build/server /server
 
 EXPOSE 9002
 ENTRYPOINT ["/server"]
+
+LABEL org.opencontainers.image.authors="Uğur vigo Özyılmazel <ugurozyilmazel@gmail.com>"
+LABEL org.opencontainers.image.licenses="MIT"
