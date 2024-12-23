@@ -25,6 +25,12 @@ $ basichttpdebugger -listen ":8000"                            # listens at :800
 
 # HMAC validation, listens at :8000, check http header name: "X-HEADER-NAME" for HMAC validation.
 $ basichttpdebugger -listen ":8000" -hmac-secret "YOURSECRET" -hmac-header-name "X-HEADER-NAME"
+
+# instead of stdout, pipe everything to file!
+$ basichttpdebugger -listen ":8000" -hmac-secret "YOURSECRET" -hmac-header-name "X-HEADER-NAME" -output "/tmp/foo"
+
+# now, open another terminal window and
+$ tail -f /tmp/foo
 ```
 
 Clone the repo and run it locally;
@@ -42,9 +48,47 @@ $ HOST=":8000" rake       # listens at :8000
 
 # HMAC validation, listens at :8000, check http header name: "X-HEADER-NAME" for HMAC validation.
 $ HOST=":8000" HMAC_SECRET="YOURSECRET" HMAC_HEADER_NAME="X-HEADER-NAME" rake
+
+# HMAC validation, listens at :8000, check http header name: "X-HEADER-NAME" for HMAC validation and pipe to "/tmp/foo"
+$ HOST=":8000" HMAC_SECRET="YOURSECRET" HMAC_HEADER_NAME="X-HEADER-NAME" OUTPUT="/tmp/foo" rake
+
+# get flag help
+$ go run . -h
+Usage of basichttpdebugger:
+  -hmac-header-name string
+    	name of your signature header (default "X-Hub-Signature-256")
+  -hmac-secret string
+    	your HMAC secret value
+  -listen string
+    	listen addr (default ":9002")
+  -output string
+    	output to (default "stdout")
 ```
 
-Environment variables are only valid for `rake` usage!
+---
+
+## Flags / Environment Variable Map
+
+| Flag | Environment Variable | Default Value |
+|:-----|:---------------------|---------------|
+| `-hmac-header-name` | `HMAC_HEADER_NAME` | `X-Hub-Signature-256` |
+| `-hmac-secret` | `HMAC_SECRET` | Not set |
+| `-listen` | `HOST` | `:9002` |
+| `-output` | `OUTPUT` | `stdout` |
+
+---
+
+## Output
+
+Here is how it looks a GitHub webhook:
+
+
+
+---
+
+## Docker
+
+---
 
 For local docker usage, default expose port is: `9002`.
 
@@ -82,6 +126,11 @@ docker run -p 9100:9100 ghcr.io/vbyazilim/basichttpdebugger/basichttpdebugger:la
 
 ## Change Log
 
+**2024-12-23**
+
+- many improvements, pretty output with colors!
+- now you can pipe to file too!
+
 **2024-09-17**
 
 - change default host port to `9002`
@@ -114,24 +163,6 @@ rake docker:run         # run docker image locally
 rake release[revision]  # release new version major,minor,patch, default: patch
 rake run                # run server (default port 9002)
 ```
-
----
-
-## Contributor(s)
-
-* [Uğur Özyılmazel](https://github.com/vigo) - Creator, maintainer
-
----
-
-## Contribute
-
-All PR’s are welcome!
-
-1. `fork` (https://github.com/vbyazilim/basichttpdebugger/fork)
-1. Create your `branch` (`git checkout -b my-feature`)
-1. `commit` yours (`git commit -am 'add some functionality'`)
-1. `push` your `branch` (`git push origin my-feature`)
-1. Than create a new **Pull Request**!
 
 ---
 

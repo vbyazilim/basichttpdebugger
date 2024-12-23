@@ -1,3 +1,9 @@
+## Contributor(s)
+
+* [Uğur Özyılmazel](https://github.com/vigo) - Creator, maintainer
+
+---
+
 ## Contribute
 
 All PR’s are welcome!

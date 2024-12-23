@@ -26,7 +26,9 @@ linters-settings:
     # check-blank: true
     exclude-functions:
       - os.Setenv
+      - fmt.Fprint
       - fmt.Fprintf
+      - fmt.Fprintln
       - fmt.Sscanf
       - twerrors.(*TWError).Error
   # ---------------------------------------------------------------------------
@@ -137,9 +139,11 @@ linters-settings:
       - name: unexported-return
       - name: unhandled-error
         arguments:
+          - "fmt.Fprint"
           - "fmt.Printf"
           - "fmt.Println"
           - "fmt.Fprintf"
+          - "fmt.Fprintln"
           - "fmt.Sscanf"
           - "os.Setenv"
       - name: unnecessary-stmt
