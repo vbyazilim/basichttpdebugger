@@ -6,6 +6,7 @@
 ![Docker Build Status](https://github.com/vbyazilim/basichttpdebugger/actions/workflows/push-to-dockerhub.yml/badge.svg)
 [![Build and push to GitHub CR](https://github.com/vbyazilim/basichttpdebugger/actions/workflows/push-to-github-cr.yml/badge.svg)](https://github.com/vbyazilim/basichttpdebugger/actions/workflows/push-to-github-cr.yml)
 ![Powered by Rake](https://img.shields.io/badge/powered_by-rake-blue?logo=ruby)
+[![Go Report Card](https://goreportcard.com/badge/github.com/vbyazilim/basichttpdebugger)](https://goreportcard.com/report/github.com/vbyazilim/basichttpdebugger)
 
 # Basic HTTP Debugger
 
@@ -43,7 +44,8 @@ basichttpdebugger -listen ":8000"    # listens at :8000
 If you want to test HMAC validation;
 
 ```bash
-basichttpdebugger  -listen ":8000" -hmac-secret "<secret>" -hmac-header-name "<X-HEADER-NAME>"
+basichttpdebugger -listen ":8000" -hmac-secret "<secret>" -hmac-header-name "<X-HEADER-NAME>"
+basichttpdebugger -color -listen ":8000" -hmac-secret "<secret>" -hmac-header-name "<X-HEADER-NAME>"
 ```
 
 Instead of standard output, pipe everything to file!
@@ -61,7 +63,7 @@ tail -f /tmp/foo
 Well, add some colors :)
 
 ```bash
-basichttpdebugger -listen ":8000" -color true
+basichttpdebugger -listen ":8000" -color
 ```
 
 If you pipe output to a file, keep colors off. Enabling colors will include
@@ -96,6 +98,7 @@ rake                      # listens at :9002
 
 HOST=":8000" rake         # listens at :8000
 HOST=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" rake
+HOST=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" COLOR=1 rake
 HOST=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" OUTPUT="/tmp/foo" rake
 ```
 
