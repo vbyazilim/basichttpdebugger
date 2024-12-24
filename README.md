@@ -96,10 +96,10 @@ go run . -listen ":8000"  # listens at :8000
 # or if you have ruby installed, use rake tasks!
 rake                      # listens at :9002
 
-HOST=":8000" rake         # listens at :8000
-HOST=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" rake
-HOST=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" COLOR=1 rake
-HOST=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" OUTPUT="/tmp/foo" rake
+LISTEN=":8000" rake         # listens at :8000
+LISTEN=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" rake
+LISTEN=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" COLOR=1 rake
+LISTEN=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" OUTPUT="/tmp/foo" rake
 ```
 
 ---
@@ -111,7 +111,7 @@ HOST=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" OUTPUT="/
 | `-hmac-header-name` | `HMAC_HEADER_NAME` | `X-Hub-Signature-256` |
 | `-hmac-secret` | `HMAC_SECRET` | Not set |
 | `-color` | `COLOR` | `false` |
-| `-listen` | `HOST` | `:9002` |
+| `-listen` | `LISTEN` | `:9002` |
 | `-output` | `OUTPUT` | `stdout` |
 
 ---
