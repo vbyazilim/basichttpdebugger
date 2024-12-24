@@ -246,7 +246,26 @@ docker run -p 9100:9100 ghcr.io/vbyazilim/basichttpdebugger/basichttpdebugger:la
 
 ---
 
+## Rake Tasks
+
+```bash
+rake -T
+
+rake coverage           # show test coverage
+rake docker:build       # build docker image locally
+rake docker:run         # run docker image locally
+rake release[revision]  # release new version major,minor,patch, default: patch
+rake run                # run server (default port 9002)
+rake test               # run test
+```
+
+---
+
 ## Change Log
+
+**2024-12-24**
+
+- refactor from scratch
 
 **2024-12-23**
 
