@@ -135,7 +135,7 @@ func debugHandlerFunc(cn *accept.ContentNegotiation, fwriter *os.File, hmsv stri
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, "OK")
 
-		mainTitle := "Basic HTTP Debugger - v" + release.Version + release.BuildInformation
+		mainTitle := "Basic HTTP Debugger - v" + release.Version + " - " + release.BuildInformation
 
 		fmt.Fprintln(fwriter, strings.Repeat("-", terminalWidth))
 		t := table.NewWriter()

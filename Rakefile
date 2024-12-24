@@ -45,12 +45,9 @@ namespace :docker do
   desc "build docker image locally"
   task :build do
     system %{
-      BUILD_INFORMATION=" - $(git rev-parse --short HEAD)"
       GOOS="linux"
       GOARCH=$(go env GOARCH)
-
       docker build \
-        --build-arg="BUILD_INFORMATION=${BUILD_INFORMATION}" \
         --build-arg="GOOS=${GOOS}" \
         --build-arg="GOARCH=${GOARCH}" \
         -t #{DOCKER_IMAGE_NAME} .

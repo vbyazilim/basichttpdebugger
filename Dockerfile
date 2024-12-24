@@ -5,8 +5,7 @@ COPY . .
 
 ARG GOOS
 ARG GOARCH
-ARG BUILD_INFORMATION
-RUN CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} go build -ldflags="-X 'github.com/vbyazilim/basichttpdebugger/release.BuildInformation=${BUILD_INFORMATION}'" -o server .
+RUN CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} go build -o server .
 
 FROM alpine:latest AS certs
 RUN apk add --update --no-cache ca-certificates
