@@ -108,6 +108,12 @@ OK
 Raw HTTP Request is saved to: /Users/vigo/Desktop/2024-12-localhost_9002.raw
 ```
 
+You can replicate same http request with:
+
+```bash
+nc localhost 9002 < /Users/vigo/Desktop/2024-12-localhost_9002.raw
+```
+
 You can also clone the source repo and run it locally;
 
 ```bash

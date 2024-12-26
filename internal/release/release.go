@@ -4,4 +4,4 @@ package release
 const Version = "0.3.0"
 
 // BuildInformation holds current build information.
-var BuildInformation = "91c5ab0c34c3"
+var BuildInformation = "d09aa2a272f6"
