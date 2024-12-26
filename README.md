@@ -27,7 +27,9 @@ go install github.com/vbyazilim/basichttpdebugger@latest
 Then run:
 
 ```bash
-basichttpdebugger -h                # help
+basichttpdebugger -h
+
+Usage of basichttpdebugger:
   -color
     	enable color
   -hmac-header-name string
@@ -42,6 +44,8 @@ basichttpdebugger -h                # help
     	save filename format of raw http (default "%Y-%m-%d-%H%i%s-{hostname}-{url}.raw")
   -save-raw-http-request
     	enable saving of raw http request
+  -version
+    	display version information
 ```
 
 Start the server;
@@ -99,7 +103,7 @@ OK
 Raw HTTP Request is saved to: 2024-12-26-163406-localhost_9002-_test_post_data.raw
 ```
 
-Set custom file format:
+Set custom filename format:
 
 ```bash
 basichttpdebugger -save-raw-http-request -save-format="~/Desktop/%Y-%m-{hostname}.raw"
@@ -108,7 +112,7 @@ OK
 Raw HTTP Request is saved to: /Users/vigo/Desktop/2024-12-localhost_9002.raw
 ```
 
-You can replicate same http request with:
+You can replicate the same http request with using `nc`:
 
 ```bash
 nc localhost 9002 < /Users/vigo/Desktop/2024-12-localhost_9002.raw
@@ -122,18 +126,17 @@ git clone github.com/vbyazilim/basichttpdebugger
 cd basichttpdebugger/
 
 go run . -h               # help
+go run . -version         # display version information
 go run .                  # starts server, listens at :9002
 
 go run . -listen ":8000"  # listens at :8000
 
 # or if you have ruby installed, use rake tasks!
 rake                      # listens at :9002
-
 LISTEN=":8000" rake       # listens at :8000
 LISTEN=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" rake
 LISTEN=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" COLOR=1 rake
 LISTEN=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" OUTPUT="/tmp/foo" rake
-
 SAVE_RAW_HTTP_REQUEST=t rake
 SAVE_RAW_HTTP_REQUEST=t SAVE_FORMAT="~/Desktop/%Y-%m-%d-%H%i%s-test.raw" rake
 ```
