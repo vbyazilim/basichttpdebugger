@@ -20,6 +20,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/vbyazilim/basichttpdebugger/internal/release"
+	"github.com/vbyazilim/basichttpdebugger/internal/stringutils"
 	"github.com/vbyazilim/basichttpdebugger/internal/validateutils"
 	"github.com/vbyazilim/basichttpdebugger/internal/writerutils"
 	"golang.org/x/term"
@@ -49,16 +50,18 @@ type VerboseServer interface {
 
 // DebugServer represents server/handler args.
 type DebugServer struct {
-	HTTPServer        *http.Server
-	OutputWriter      io.WriteCloser
-	ListenAddr        string
-	HMACSecret        string
-	HMACHeaderName    string
-	ReadTimeout       time.Duration
-	ReadHeaderTimeout time.Duration
-	WriteTimeout      time.Duration
-	IdleTimeout       time.Duration
-	Color             bool
+	HTTPServer                   *http.Server
+	OutputWriter                 io.WriteCloser
+	ListenAddr                   string
+	HMACSecret                   string
+	HMACHeaderName               string
+	RawHTTPRequestFileSaveFormat string
+	ReadTimeout                  time.Duration
+	ReadHeaderTimeout            time.Duration
+	WriteTimeout                 time.Duration
+	IdleTimeout                  time.Duration
+	Color                        bool
+	SaveRawHTTPRequest           bool
 }
 
 // Start starts http server.
@@ -66,6 +69,9 @@ func (s *DebugServer) Start() error {
 	log.Printf("server listening at %s\n", s.ListenAddr)
 	if fname := writerutils.GetFilePathName(s.OutputWriter); fname != "" {
 		log.Printf("output is set to %s\n", fname)
+	}
+	if s.SaveRawHTTPRequest {
+		log.Println("saving raw http request is enabled")
 	}
 	if err := s.HTTPServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("server start error: %w", err)
@@ -159,11 +165,27 @@ func WithColor(b bool) Option {
 	}
 }
 
+// WithSaveRawHTTPRequest enables/disables saving raw http request to disk.
+func WithSaveRawHTTPRequest(b bool) Option {
+	return func(d *DebugServer) {
+		d.SaveRawHTTPRequest = b
+	}
+}
+
+// WithRawHTTPRequestFileSaveFormat set file save name format for raw http request.
+func WithRawHTTPRequestFileSaveFormat(s string) Option {
+	return func(d *DebugServer) {
+		d.RawHTTPRequestFileSaveFormat = s
+	}
+}
+
 type debugHandlerOptions struct {
-	writer         io.WriteCloser
-	hmacSecret     string
-	hmacHeaderName string
-	color          bool
+	writer                       io.WriteCloser
+	hmacSecret                   string
+	hmacHeaderName               string
+	rawHTTPRequestFileSaveFormat string
+	color                        bool
+	saveRawHTTPRequest           bool
 }
 
 func (debugHandlerOptions) getTerminalWidth() int {
@@ -326,18 +348,40 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 		}
 	RENDER:
 		t.Render()
+
+		mwr := io.MultiWriter(options.writer)
+		var rawHRw *os.File
+		var rawErr error
+
+		if options.saveRawHTTPRequest {
+			formattedFilename := stringutils.GetFormattedFilename(options.rawHTTPRequestFileSaveFormat, r)
+			rawHRw, rawErr = os.Create(filepath.Clean(formattedFilename))
+			if rawErr != nil {
+				fmt.Println("err", rawErr)
+
+				goto WRITERHR
+			}
+
+			mwr = io.MultiWriter(options.writer, rawHRw)
+			fmt.Fprintf(w, "Raw HTTP Request is saved to: %s\n", formattedFilename)
+		}
+
+	WRITERHR:
 		options.drawLine()
-		fmt.Fprintln(options.writer, "Raw Http Request")
+		fmt.Fprintln(mwr, "Raw Http Request")
 		options.drawLine()
-		fmt.Fprintf(options.writer, "%s %s %s\n", r.Method, r.URL.String(), r.Proto)
-		fmt.Fprintf(options.writer, "Host: %s\n", r.Host)
+		fmt.Fprintf(mwr, "%s %s %s\n", r.Method, r.URL.String(), r.Proto)
+		fmt.Fprintf(mwr, "Host: %s\n", r.Host)
 		for _, key := range headerKeys {
-			fmt.Fprintf(options.writer, "%s: %s\n", key, strings.Join(r.Header[key], ","))
+			fmt.Fprintf(mwr, "%s: %s\n", key, strings.Join(r.Header[key], ","))
 		}
 		if bodyAsString != "" {
-			fmt.Fprintf(options.writer, "\n%s\n", bodyAsString)
+			fmt.Fprintf(mwr, "\n%s\n", bodyAsString)
 		}
 		options.drawLine()
+		if rawHRw != nil {
+			_ = rawHRw.Close()
+		}
 	}
 }
 
@@ -373,10 +417,12 @@ func New(options ...Option) (*DebugServer, error) {
 	}
 
 	handlerOptions := debugHandlerOptions{
-		writer:         opts.OutputWriter,
-		hmacSecret:     opts.HMACSecret,
-		hmacHeaderName: opts.HMACHeaderName,
-		color:          opts.Color,
+		writer:                       opts.OutputWriter,
+		hmacSecret:                   opts.HMACSecret,
+		hmacHeaderName:               opts.HMACHeaderName,
+		color:                        opts.Color,
+		rawHTTPRequestFileSaveFormat: opts.RawHTTPRequestFileSaveFormat,
+		saveRawHTTPRequest:           opts.SaveRawHTTPRequest,
 	}
 
 	mux := http.NewServeMux()

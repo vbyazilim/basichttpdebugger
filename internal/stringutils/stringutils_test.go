@@ -1,6 +1,8 @@
 package stringutils_test
 
 import (
+	"net/http"
+	"net/url"
 	"testing"
 	"time"
 
@@ -131,4 +133,66 @@ func parseDateWithNanoseconds(dateString string) *time.Time {
 		panic(err)
 	}
 	return &t
+}
+
+func TestGetFormattedFilename(t *testing.T) {
+	tests := []struct {
+		name     string
+		format   string
+		req      *http.Request
+		expected string
+	}{
+		{
+			name:   "Basic formatting with sanitized hostname and URL",
+			format: "%Y-%m-%d-{hostname}-{url}.raw",
+			req: &http.Request{
+				Host: "localhost:9000",
+				URL:  &url.URL{Path: "/example/path"},
+			},
+			expected: "2024-12-26-localhost_9000-_example_path.raw",
+		},
+		{
+			name:   "Special characters in hostname and URL",
+			format: "%Y-%m-%d-%F-{hostname}-{url}.raw",
+			req: &http.Request{
+				Host: "host<>:\"/\\|?*name",
+				URL:  &url.URL{Path: "/example/<invalid>?query"},
+			},
+			expected: "2024-12-26-December-host_name-_example_invalid_query.raw",
+		},
+		{
+			name:   "Empty format string",
+			format: "",
+			req: &http.Request{
+				Host: "localhost:9000",
+				URL:  &url.URL{Path: "/example/path"},
+			},
+			expected: "",
+		},
+		{
+			name:   "Only hostname placeholder",
+			format: "{hostname}.raw",
+			req: &http.Request{
+				Host: "localhost:9000",
+				URL:  &url.URL{Path: "/example/path"},
+			},
+			expected: "localhost_9000.raw",
+		},
+		{
+			name:   "Only URL placeholder",
+			format: "{url}.raw",
+			req: &http.Request{
+				Host: "localhost",
+				URL:  &url.URL{Path: "/example/path"},
+			},
+			expected: "_example_path.raw",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := stringutils.GetFormattedFilename(test.format, test.req)
+			assert.Equal(t, test.expected, result)
+		})
+	}
 }

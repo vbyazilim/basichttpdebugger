@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	helpHMACHeaderName = "name of your signature header, e.g. X-Hub-Signature-256"
+	helpHMACHeaderName              = "name of your signature header, e.g. X-Hub-Signature-256"
+	defRawHTTPRequestFileSaveFormat = "%Y-%m-%d-%H%i%s-{hostname}-{url}.raw"
 )
 
 // Run creates server instance and runs.
@@ -26,6 +27,16 @@ func Run() error {
 	hmacSecretValue := flag.String("hmac-secret", envutils.GetenvOrDefault("HMAC_SECRET", ""), "your HMAC secret value")
 	output := flag.String("output", envutils.GetenvOrDefault("OUTPUT", "stdout"), "output/write responses to")
 	color := flag.Bool("color", envutils.GetenvOrDefault("COLOR", false), "enable color")
+	saveRawHTTPRequest := flag.Bool(
+		"save-raw-http-request",
+		envutils.GetenvOrDefault("SAVE_RAW_HTTP_REQUEST", false),
+		"enable saving of raw http request",
+	)
+	saveFormat := flag.String(
+		"save-format",
+		envutils.GetenvOrDefault("SAVE_FORMAT", defRawHTTPRequestFileSaveFormat),
+		"save filename format of raw http",
+	)
 	flag.Parse()
 
 	server, err := New(
@@ -34,6 +45,8 @@ func Run() error {
 		WithHMACSecret(*hmacSecretValue),
 		WithOutputWriter(*output),
 		WithColor(*color),
+		WithSaveRawHTTPRequest(*saveRawHTTPRequest),
+		WithRawHTTPRequestFileSaveFormat(*saveFormat),
 	)
 	if err != nil {
 		return fmt.Errorf("server init error: %w", err)

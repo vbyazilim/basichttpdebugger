@@ -28,6 +28,20 @@ Then run:
 
 ```bash
 basichttpdebugger -h                # help
+  -color
+    	enable color
+  -hmac-header-name string
+    	name of your signature header, e.g. X-Hub-Signature-256
+  -hmac-secret string
+    	your HMAC secret value
+  -listen string
+    	listen addr (default ":9002")
+  -output string
+    	output/write responses to (default "stdout")
+  -save-format string
+    	save filename format of raw http (default "%Y-%m-%d-%H%i%s-{hostname}-{url}.raw")
+  -save-raw-http-request
+    	enable saving of raw http request
 ```
 
 Start the server;
@@ -67,7 +81,28 @@ Well, add some colors :)
 basichttpdebugger -listen ":8000" -color
 ```
 
-Color output is **disabled** if the output is set to file!
+Color output is **disabled** if the output is set to file! You can also
+save/capture Raw HTTP Request for later use too:
+
+```bash
+basichttpdebugger -save-raw-http-request     # will create something like:
+                                             # 2024-12-26-163253-localhost_9002-_.raw
+                                             # slashes become _
+```
+
+If you make:
+
+```bash
+curl localhost:9002/test/post/data -d '{"foo": "bar"}'
+OK
+Raw HTTP Request is saved to: 2024-12-26-163406-localhost_9002-_test_post_data.raw
+```
+
+Set custom file format:
+
+```bash
+basichttpdebugger -save-raw-http-request -save-format="~/Desktop/%Y-"
+```
 
 You can also clone the source repo and run it locally;
 
@@ -77,18 +112,6 @@ git clone github.com/vbyazilim/basichttpdebugger
 cd basichttpdebugger/
 
 go run . -h               # help
-Usage of basichttpdebugger:
-  -color
-    	enable color
-  -hmac-header-name string
-    	name of your signature header (default "X-Hub-Signature-256")
-  -hmac-secret string
-    	your HMAC secret value
-  -listen string
-    	listen addr (default ":9002")
-  -output string
-    	output to (default "stdout")
-
 go run .                  # starts server, listens at :9002
 
 go run . -listen ":8000"  # listens at :8000
@@ -96,10 +119,13 @@ go run . -listen ":8000"  # listens at :8000
 # or if you have ruby installed, use rake tasks!
 rake                      # listens at :9002
 
-LISTEN=":8000" rake         # listens at :8000
+LISTEN=":8000" rake       # listens at :8000
 LISTEN=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" rake
 LISTEN=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" COLOR=1 rake
 LISTEN=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" OUTPUT="/tmp/foo" rake
+
+SAVE_RAW_HTTP_REQUEST=t rake
+SAVE_RAW_HTTP_REQUEST=t SAVE_FORMAT="~/Desktop/%Y-%m-%d-%H%i%s-test.raw" rake
 ```
 
 ---
@@ -113,6 +139,42 @@ LISTEN=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" OUTPUT=
 | `-color` | `COLOR` | `false` |
 | `-listen` | `LISTEN` | `:9002` |
 | `-output` | `OUTPUT` | `stdout` |
+| `-save-raw-http-request` | `SAVE_RAW_HTTP_REQUEST` | `false` |
+| `-save-format` | `SAVE_FORMAT` | `%Y-%m-%d-%H%i%s-{hostname}.raw` |
+
+---
+
+## Save Format Placeholders
+
+Most of the format is taken from [Django](https://docs.djangoproject.com/en/5.1/ref/templates/builtins/#date)!
+
+| Placeholder | Description | Example |
+|:------------|:------------|---------|
+| `{hostname}` | Host name :) | `localhost_9002` |
+| `{url}` | URL path | `/test/post/data` => `_test_post_data` |
+| `%d` | Day of the month, 2 digits with leading zeros. | `01` to `31` |
+| `%j` | Day of the month without leading zeros. | `1` to `31` |
+| `%D` | Day of the week, textual, 3 letters. | `Fri` |
+| `%l` | Day of the week, textual, long. | `Friday` |
+| `%w` | Day of the week, digits without leading zeros. | `0` (Sunday) |
+| `%z` | Day of the year. | `1` to `366` |
+| `%W` | ISO-8601 week number of year, with weeks starting on Monday. | `1` to `53` |
+| `%m` | Month, 2 digits with leading zeros. | `01` to `12` |
+| `%n` | Month without leading zeros. | `1` to `12` |
+| `%M` | Month, textual, 3 letters. | `Jan` |
+| `%b` | Month, textual, 3 letters, lowercase. | `jan` |
+| `%F` | Month, textual, long. | `January` |
+| `%t` | Number of days in the given month. | `28` to `31` |
+| `%y` | Year, 2 digits with leading zeros. | `00` to `99` |
+| `%Y` | Year, 4 digits with leading zeros. | `0001` to `9999` |
+| `%g` | Hour, 12-hour format without leading zeros. | `1` to `12` |
+| `%G` | Hour, 24-hour format without leading zeros. | `0` to `23` |
+| `%h` | Hour, 12-hour format. | `01` to `12` |
+| `%H` | Hour, 24-hour format. | `00` to `23` |
+| `%i` | Minutes. | `00` to `59` |
+| `%s` | Seconds, 2 digits with leading zeros. | `00` to `59` |
+| `%u` | Microseconds. | `000000` to `999999` |
+| `%A` | Meridiem system. | `AM` or `PM` |
 
 ---
 
