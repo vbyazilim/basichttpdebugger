@@ -12,7 +12,7 @@
 # Basic HTTP Debugger
 
 This basic http server helps you to debug incoming http requests. It helps you to
-debug 3^rd pary webhooks etc...
+debug 3<sup>rd</sup> party webhooks etc...
 
 ---
 
