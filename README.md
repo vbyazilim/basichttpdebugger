@@ -94,6 +94,7 @@ If you make:
 
 ```bash
 curl localhost:9002/test/post/data -d '{"foo": "bar"}'
+
 OK
 Raw HTTP Request is saved to: 2024-12-26-163406-localhost_9002-_test_post_data.raw
 ```
@@ -101,7 +102,10 @@ Raw HTTP Request is saved to: 2024-12-26-163406-localhost_9002-_test_post_data.r
 Set custom file format:
 
 ```bash
-basichttpdebugger -save-raw-http-request -save-format="~/Desktop/%Y-"
+basichttpdebugger -save-raw-http-request -save-format="~/Desktop/%Y-%m-{hostname}.raw"
+
+OK
+Raw HTTP Request is saved to: /Users/vigo/Desktop/2024-12-localhost_9002.raw
 ```
 
 You can also clone the source repo and run it locally;

@@ -368,7 +368,7 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 
 	WRITERHR:
 		options.drawLine()
-		fmt.Fprintln(mwr, "Raw Http Request")
+		fmt.Fprintln(options.writer, "Raw Http Request")
 		options.drawLine()
 		fmt.Fprintf(mwr, "%s %s %s\n", r.Method, r.URL.String(), r.Proto)
 		fmt.Fprintf(mwr, "Host: %s\n", r.Host)
