@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/vbyazilim/basichttpdebugger/internal/envutils"
+	"github.com/vbyazilim/basichttpdebugger/internal/release"
 )
 
 const (
@@ -37,7 +38,14 @@ func Run() error {
 		envutils.GetenvOrDefault("SAVE_FORMAT", defRawHTTPRequestFileSaveFormat),
 		"save filename format of raw http",
 	)
+	version := flag.Bool("version", false, "display version information")
 	flag.Parse()
+
+	if *version {
+		fmt.Fprintf(flag.CommandLine.Output(), "%s - build: %s\n", release.Version, release.BuildInformation)
+
+		return nil
+	}
 
 	server, err := New(
 		WithListenAddr(*listenAddr),
