@@ -16,7 +16,7 @@ commit = true
 message = "Bump version: {current_version} → {new_version}"
 commit_args = "--no-verify"
 setup_hooks = []
-pre_commit_hooks = []
+pre_commit_hooks = ["bash scripts/pre-commit/inject-commit-sha.bash"]
 post_commit_hooks = []
 
 [[tool.bumpversion.files]]
