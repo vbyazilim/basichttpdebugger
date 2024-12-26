@@ -30,7 +30,7 @@ search = "{current_version}"
 replace = "{new_version}"
 
 [[tool.bumpversion.files]]
-filename = "release/release.go"
+filename = "internal/release/release.go"
 search = "var BuildInformation = \"[a-f0-9]{{1,12}}\""
 replace = "var BuildInformation = \"{commit_sha}\""
 regex = true

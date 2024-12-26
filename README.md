@@ -7,6 +7,7 @@
 [![Build and push to GitHub CR](https://github.com/vbyazilim/basichttpdebugger/actions/workflows/push-to-github-cr.yml/badge.svg)](https://github.com/vbyazilim/basichttpdebugger/actions/workflows/push-to-github-cr.yml)
 ![Powered by Rake](https://img.shields.io/badge/powered_by-rake-blue?logo=ruby)
 [![Go Report Card](https://goreportcard.com/badge/github.com/vbyazilim/basichttpdebugger)](https://goreportcard.com/report/github.com/vbyazilim/basichttpdebugger)
+[![codecov](https://codecov.io/gh/vbyazilim/basichttpdebugger/graph/badge.svg?token=AGNIW2SA8J)](https://codecov.io/gh/vbyazilim/basichttpdebugger)
 
 # Basic HTTP Debugger
 
@@ -27,6 +28,20 @@ Then run:
 
 ```bash
 basichttpdebugger -h                # help
+  -color
+    	enable color
+  -hmac-header-name string
+    	name of your signature header, e.g. X-Hub-Signature-256
+  -hmac-secret string
+    	your HMAC secret value
+  -listen string
+    	listen addr (default ":9002")
+  -output string
+    	output/write responses to (default "stdout")
+  -save-format string
+    	save filename format of raw http (default "%Y-%m-%d-%H%i%s-{hostname}-{url}.raw")
+  -save-raw-http-request
+    	enable saving of raw http request
 ```
 
 Start the server;
@@ -66,8 +81,28 @@ Well, add some colors :)
 basichttpdebugger -listen ":8000" -color
 ```
 
-If you pipe output to a file, keep colors off. Enabling colors will include
-ANSI escape sequences in the file as well.
+Color output is **disabled** if the output is set to file! You can also
+save/capture Raw HTTP Request for later use too:
+
+```bash
+basichttpdebugger -save-raw-http-request     # will create something like:
+                                             # 2024-12-26-163253-localhost_9002-_.raw
+                                             # slashes become _
+```
+
+If you make:
+
+```bash
+curl localhost:9002/test/post/data -d '{"foo": "bar"}'
+OK
+Raw HTTP Request is saved to: 2024-12-26-163406-localhost_9002-_test_post_data.raw
+```
+
+Set custom file format:
+
+```bash
+basichttpdebugger -save-raw-http-request -save-format="~/Desktop/%Y-"
+```
 
 You can also clone the source repo and run it locally;
 
@@ -77,18 +112,6 @@ git clone github.com/vbyazilim/basichttpdebugger
 cd basichttpdebugger/
 
 go run . -h               # help
-Usage of basichttpdebugger:
-  -color
-    	enable color
-  -hmac-header-name string
-    	name of your signature header (default "X-Hub-Signature-256")
-  -hmac-secret string
-    	your HMAC secret value
-  -listen string
-    	listen addr (default ":9002")
-  -output string
-    	output to (default "stdout")
-
 go run .                  # starts server, listens at :9002
 
 go run . -listen ":8000"  # listens at :8000
@@ -96,10 +119,13 @@ go run . -listen ":8000"  # listens at :8000
 # or if you have ruby installed, use rake tasks!
 rake                      # listens at :9002
 
-HOST=":8000" rake         # listens at :8000
-HOST=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" rake
-HOST=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" COLOR=1 rake
-HOST=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" OUTPUT="/tmp/foo" rake
+LISTEN=":8000" rake       # listens at :8000
+LISTEN=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" rake
+LISTEN=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" COLOR=1 rake
+LISTEN=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" OUTPUT="/tmp/foo" rake
+
+SAVE_RAW_HTTP_REQUEST=t rake
+SAVE_RAW_HTTP_REQUEST=t SAVE_FORMAT="~/Desktop/%Y-%m-%d-%H%i%s-test.raw" rake
 ```
 
 ---
@@ -108,103 +134,164 @@ HOST=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" OUTPUT="/
 
 | Flag | Environment Variable | Default Value |
 |:-----|:---------------------|---------------|
-| `-hmac-header-name` | `HMAC_HEADER_NAME` | `X-Hub-Signature-256` |
+| `-hmac-header-name` | `HMAC_HEADER_NAME` | Not set |
 | `-hmac-secret` | `HMAC_SECRET` | Not set |
 | `-color` | `COLOR` | `false` |
-| `-listen` | `HOST` | `:9002` |
+| `-listen` | `LISTEN` | `:9002` |
 | `-output` | `OUTPUT` | `stdout` |
+| `-save-raw-http-request` | `SAVE_RAW_HTTP_REQUEST` | `false` |
+| `-save-format` | `SAVE_FORMAT` | `%Y-%m-%d-%H%i%s-{hostname}.raw` |
+
+---
+
+## Save Format Placeholders
+
+Most of the format is taken from [Django](https://docs.djangoproject.com/en/5.1/ref/templates/builtins/#date)!
+
+| Placeholder | Description | Example |
+|:------------|:------------|---------|
+| `{hostname}` | Host name :) | `localhost_9002` |
+| `{url}` | URL path | `/test/post/data` => `_test_post_data` |
+| `%d` | Day of the month, 2 digits with leading zeros. | `01` to `31` |
+| `%j` | Day of the month without leading zeros. | `1` to `31` |
+| `%D` | Day of the week, textual, 3 letters. | `Fri` |
+| `%l` | Day of the week, textual, long. | `Friday` |
+| `%w` | Day of the week, digits without leading zeros. | `0` (Sunday) |
+| `%z` | Day of the year. | `1` to `366` |
+| `%W` | ISO-8601 week number of year, with weeks starting on Monday. | `1` to `53` |
+| `%m` | Month, 2 digits with leading zeros. | `01` to `12` |
+| `%n` | Month without leading zeros. | `1` to `12` |
+| `%M` | Month, textual, 3 letters. | `Jan` |
+| `%b` | Month, textual, 3 letters, lowercase. | `jan` |
+| `%F` | Month, textual, long. | `January` |
+| `%t` | Number of days in the given month. | `28` to `31` |
+| `%y` | Year, 2 digits with leading zeros. | `00` to `99` |
+| `%Y` | Year, 4 digits with leading zeros. | `0001` to `9999` |
+| `%g` | Hour, 12-hour format without leading zeros. | `1` to `12` |
+| `%G` | Hour, 24-hour format without leading zeros. | `0` to `23` |
+| `%h` | Hour, 12-hour format. | `01` to `12` |
+| `%H` | Hour, 24-hour format. | `00` to `23` |
+| `%i` | Minutes. | `00` to `59` |
+| `%s` | Seconds, 2 digits with leading zeros. | `00` to `59` |
+| `%u` | Microseconds. | `000000` to `999999` |
+| `%A` | Meridiem system. | `AM` or `PM` |
 
 ---
 
 ## Output
 
-Here is how it looks, a GitHub webhook (trimmed, masked due to it’s huge data):
+Here is how it looks, a GitHub webhook (trimmed, masked due to it’s huge/private data):
 
-    +---------------------------------------------+
-    | Basic HTTP Debugger - v0.1.4 - 1f15065600c8 |
-    +-----------------------+---------------------+
-    | HTTP Method           | POST                |
-    | Matching Content-Type | text/plain          |
-    +-----------------------+---------------------+
-    +-------------------------------------------------------------------------------------------+
-    | Request Headers                                                                           |
-    +----------------------------------------+--------------------------------------------------+
-    | Accept                                 | */*                                              |
-    | Accept-Encoding                        | gzip                                             |
-    | Content-Length                         | 9853                                             |
-    | Content-Type                           | application/json                                 |
-    | User-Agent                             | GitHub-Hookshot/68d5600                          |
-    | X-Forwarded-For                        | ***.**.***.**                                    |
-    | X-Forwarded-Host                       | ******-******-******.ngrok-free.app              |
-    | X-Forwarded-Proto                      | https                                            |
-    | X-Github-Delivery                      | 6b2db120-bfe4-11ef-91e7-6e465723772e             |
-    | X-Github-Event                         | issues                                           |
-    | X-Github-Hook-Id                       | 519902493                                        |
-    | X-Github-Hook-Installation-Target-Id   | 906427850                                        |
-    | X-Github-Hook-Installation-Target-Type | repository                                       |
-    | X-Hub-Signature                        | sha1=aea0d3b6577832e464**********************    |
-    | X-Hub-Signature-256                    | sha256=4b24fa2a16d12887665********************** |
-    |                                        | ********************002                          |
-    +----------------------------------------+--------------------------------------------------+
-    +----------------------------------------------------------------------------------------------+
-    | HMAC Validation                                                                              |
-    +--------------------+-------------------------------------------------------------------------+
-    | HMAC Secret Value  | **********                                                              |
-    | HMAC Header Name   | X-Hub-Signature-256                                                     |
-    | Incoming Signature | sha256=4b24fa2a16d128************************************************** |
-    | Expected Signature | sha256=4b24fa2a16d128************************************************** |
-    | Is Valid?          | true                                                                    |
-    +--------------------+-------------------------------------------------------------------------+
-    {
-        "action": "closed",
-        "issue": {
-            "active_lock_reason": null,
-            "assignee": null,
-            "assignees": [],
-            :
-            :
-            "reactions": {
-                "+1": 0,
-                "-1": 0,
-                :
-                :
-            },
-            "repository_url": "https://api.github.com/repos/<github-org>/<repo>",
-            "state": "closed",
-            "state_reason": "not_planned",
-            "timeline_url": "https://api.github.com/repos/<github-org>/<repo>/issues/6/timeline",
-            :
-            "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/82952?v=4",
-                :
-                :
-            }
-        },
-        "organization": {
-            "avatar_url": "https://avatars.githubusercontent.com/u/159630054?v=4",
-            :
-            :
-        },
-        "repository": {
-            "allow_forking": false,
-            :
-            :
-            "open_issues": 3,
-            "open_issues_count": 3,
-            "owner": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/159630054?v=4",
-                :
-                :
-            },
-            :
-            :
-        },
-        "sender": {
-            "avatar_url": "https://avatars.githubusercontent.com/u/82952?v=4",
-            :
-            :
-        }
-    }
+    ----------------------------------------------------------------------------------------------------
+    +--------------------------------------------------------------------------------------------------------------------------------------------------+
+    | Basic HTTP Debugger                                                                                                                              |
+    +------------------------------------------------------------------------+-------------------------------------------------------------------------+
+    | Version                                                                | <version>                                                               |
+    | Build                                                                  | <build-sha>                                                             |
+    | Request Time                                                           | 2024-12-26 07:37:29.704382 +0000 UTC                                    |
+    | HTTP Method                                                            | POST                                                                    |
+    +------------------------------------------------------------------------+-------------------------------------------------------------------------+
+    | Request Headers                                                                                                                                  |
+    +------------------------------------------------------------------------+-------------------------------------------------------------------------+
+    | Accept                                                                 | */*                                                                     |
+    | Accept-Encoding                                                        | gzip                                                                    |
+    | Content-Length                                                         | 11453                                                                   |
+    | Content-Type                                                           | application/json                                                        |
+    | User-Agent                                                             | GitHub-Hookshot/*******                                                 |
+    | X-Forwarded-For                                                        | 140.82.115.54                                                           |
+    | X-Forwarded-Host                                                       | ****.ngrok-free.app                                                     |
+    | X-Forwarded-Proto                                                      | https                                                                   |
+    | X-Github-Delivery                                                      | 0d27de20-****-11ef-****-78dbc150f59f                                    |
+    | X-Github-Event                                                         | issue_comment                                                           |
+    | X-Github-Hook-Id                                                       | ****02493                                                               |
+    | X-Github-Hook-Installation-Target-Id                                   | 90642****                                                               |
+    | X-Github-Hook-Installation-Target-Type                                 | repository                                                              |
+    | X-Hub-Signature                                                        | sha1=****************60a5a88092f5c4678b06fd1e                           |
+    | X-Hub-Signature-256                                                    | sha256=****************bebf86cbf7bc1c69a93ff8a3d1ff0cf20ee31ff57ed85ab2 |
+    +------------------------------------------------------------------------+-------------------------------------------------------------------------+
+    | Payload                                                                                                                                          |
+    +------------------------------------------------------------------------+-------------------------------------------------------------------------+
+    | HMAC Secret                                                            | *******************                                                     |
+    | HMAC Header Name                                                       | X-Hub-Signature-256                                                     |
+    | Incoming Signature                                                     | sha256=****************bebf86cbf7bc1c69a93ff8a3d1ff0cf20ee31ff57ed85ab2 |
+    | Expected Signature                                                     | sha256=****************bebf86cbf7bc1c69a93ff8a3d1ff0cf20ee31ff57ed85ab2 |
+    | Is Valid?                                                              | true                                                                    |
+    +------------------------------------------------------------------------+-------------------------------------------------------------------------+
+    | Incoming                                                               | application/json                                                        |
+    +------------------------------------------------------------------------+-------------------------------------------------------------------------+
+    | {                                                                                                                                                |
+    |     "action": "created",                                                                                                                         |
+    |     "comment": {                                                                                                                                 |
+    |          :                                                                                                                                       |
+    |          :                                                                                                                                       |
+    |         "reactions": {                                                                                                                           |
+    |             :                                                                                                                                    |
+    |             :                                                                                                                                    |
+    |         },                                                                                                                                       |
+    |         :                                                                                                                                        |
+    |         "user": {                                                                                                                                |
+    |             :                                                                                                                                    |
+    |             :                                                                                                                                    |
+    |             :                                                                                                                                    |
+    |         }                                                                                                                                        |
+    |     },                                                                                                                                           |
+    |     "issue": {                                                                                                                                   |
+    |         :                                                                                                                                        |
+    |         "reactions": {                                                                                                                           |
+    |         :                                                                                                                                        |
+    |         :                                                                                                                                        |
+    |         :                                                                                                                                        |
+    |         },                                                                                                                                       |
+    |         :                                                                                                                                        |
+    |         "user": {                                                                                                                                |
+    |         :                                                                                                                                        |
+    |         }                                                                                                                                        |
+    |     },                                                                                                                                           |
+    |     "organization": {                                                                                                                            |
+    |         :                                                                                                                                        |
+    |         :                                                                                                                                        |
+    |         :                                                                                                                                        |
+    |     },                                                                                                                                           |
+    |     "repository": {                                                                                                                              |
+    |         :                                                                                                                                        |
+    |         :                                                                                                                                        |
+    |         :                                                                                                                                        |
+    |         "owner": {                                                                                                                               |
+    |         :                                                                                                                                        |
+    |         },                                                                                                                                       |
+    |         :                                                                                                                                        |
+    |         :                                                                                                                                        |
+    |     },                                                                                                                                           |
+    |     "sender": {                                                                                                                                  |
+    |         :                                                                                                                                        |
+    |         :                                                                                                                                        |
+    |     }                                                                                                                                            |
+    | }                                                                                                                                                |
+    +--------------------------------------------------------------------------------------------------------------------------------------------------+
+    ----------------------------------------------------------------------------------------------------
+    Raw Http Request
+    ----------------------------------------------------------------------------------------------------
+    POST /webhook/github HTTP/1.1
+    Host: ****.ngrok-free.app
+    Accept: */*
+    Accept-Encoding: gzip
+    Content-Length: 11453
+    Content-Type: application/json
+    User-Agent: GitHub-Hookshot/*******
+    X-Forwarded-For: 140.82.115.54
+    X-Forwarded-Host: ****.ngrok-free.app
+    X-Forwarded-Proto: https
+    X-Github-Delivery: 0d27de20-****-11ef-****-78dbc150f59f
+    X-Github-Event: issue_comment
+    X-Github-Hook-Id: 51990****
+    X-Github-Hook-Installation-Target-Id: 90642****
+    X-Github-Hook-Installation-Target-Type: repository
+    X-Hub-Signature: sha1=************a68b60a5a88092f5c4678b06fd1e
+    X-Hub-Signature-256: sha256=************3d61bebf86cbf7bc1c69a93ff8a3d1ff0cf20ee31ff57ed85ab2
+    
+    {"action":"created","issue":{"url": ...} ... }
+    ----------------------------------------------------------------------------------------------------
+
 
 ---
 
@@ -246,7 +333,29 @@ docker run -p 9100:9100 ghcr.io/vbyazilim/basichttpdebugger/basichttpdebugger:la
 
 ---
 
+## Rake Tasks
+
+```bash
+rake -T
+
+rake coverage           # show test coverage
+rake docker:build       # build docker image locally
+rake docker:run         # run docker image locally
+rake release[revision]  # release new version major,minor,patch, default: patch
+rake run                # run server (default port 9002)
+rake test               # run test
+```
+
+---
+
 ## Change Log
+
+**2024-12-24**
+
+- refactor from scratch
+- disable color when output is file (due to ansi codes, output looks glitchy)
+- auto detect terminal and column width
+- add raw http request for response
 
 **2024-12-23**
 
@@ -280,10 +389,12 @@ docker run -p 9100:9100 ghcr.io/vbyazilim/basichttpdebugger/basichttpdebugger:la
 ```bash
 $ rake -T
 
+rake coverage           # show test coverage
 rake docker:build       # build docker image locally
 rake docker:run         # run docker image locally
 rake release[revision]  # release new version major,minor,patch, default: patch
 rake run                # run server (default port 9002)
+rake test               # run test
 ```
 
 ---
