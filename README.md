@@ -7,6 +7,7 @@
 [![Build and push to GitHub CR](https://github.com/vbyazilim/basichttpdebugger/actions/workflows/push-to-github-cr.yml/badge.svg)](https://github.com/vbyazilim/basichttpdebugger/actions/workflows/push-to-github-cr.yml)
 ![Powered by Rake](https://img.shields.io/badge/powered_by-rake-blue?logo=ruby)
 [![Go Report Card](https://goreportcard.com/badge/github.com/vbyazilim/basichttpdebugger)](https://goreportcard.com/report/github.com/vbyazilim/basichttpdebugger)
+[![codecov](https://codecov.io/gh/vbyazilim/basichttpdebugger/graph/badge.svg?token=AGNIW2SA8J)](https://codecov.io/gh/vbyazilim/basichttpdebugger)
 
 # Basic HTTP Debugger
 
