@@ -66,8 +66,7 @@ Well, add some colors :)
 basichttpdebugger -listen ":8000" -color
 ```
 
-If you pipe output to a file, keep colors off. Enabling colors will include
-ANSI escape sequences in the file as well.
+Color output is **disabled** if the output is set to file!
 
 You can also clone the source repo and run it locally;
 
@@ -108,7 +107,7 @@ LISTEN=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" OUTPUT=
 
 | Flag | Environment Variable | Default Value |
 |:-----|:---------------------|---------------|
-| `-hmac-header-name` | `HMAC_HEADER_NAME` | `X-Hub-Signature-256` |
+| `-hmac-header-name` | `HMAC_HEADER_NAME` | Not set |
 | `-hmac-secret` | `HMAC_SECRET` | Not set |
 | `-color` | `COLOR` | `false` |
 | `-listen` | `LISTEN` | `:9002` |
@@ -118,93 +117,118 @@ LISTEN=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" OUTPUT=
 
 ## Output
 
-Here is how it looks, a GitHub webhook (trimmed, masked due to it’s huge data):
+Here is how it looks, a GitHub webhook (trimmed, masked due to it’s huge/private data):
 
-    +---------------------------------------------+
-    | Basic HTTP Debugger - v0.1.4 - 1f15065600c8 |
-    +-----------------------+---------------------+
-    | HTTP Method           | POST                |
-    | Matching Content-Type | text/plain          |
-    +-----------------------+---------------------+
-    +-------------------------------------------------------------------------------------------+
-    | Request Headers                                                                           |
-    +----------------------------------------+--------------------------------------------------+
-    | Accept                                 | */*                                              |
-    | Accept-Encoding                        | gzip                                             |
-    | Content-Length                         | 9853                                             |
-    | Content-Type                           | application/json                                 |
-    | User-Agent                             | GitHub-Hookshot/68d5600                          |
-    | X-Forwarded-For                        | ***.**.***.**                                    |
-    | X-Forwarded-Host                       | ******-******-******.ngrok-free.app              |
-    | X-Forwarded-Proto                      | https                                            |
-    | X-Github-Delivery                      | 6b2db120-bfe4-11ef-91e7-6e465723772e             |
-    | X-Github-Event                         | issues                                           |
-    | X-Github-Hook-Id                       | 519902493                                        |
-    | X-Github-Hook-Installation-Target-Id   | 906427850                                        |
-    | X-Github-Hook-Installation-Target-Type | repository                                       |
-    | X-Hub-Signature                        | sha1=aea0d3b6577832e464**********************    |
-    | X-Hub-Signature-256                    | sha256=4b24fa2a16d12887665********************** |
-    |                                        | ********************002                          |
-    +----------------------------------------+--------------------------------------------------+
-    +----------------------------------------------------------------------------------------------+
-    | HMAC Validation                                                                              |
-    +--------------------+-------------------------------------------------------------------------+
-    | HMAC Secret Value  | **********                                                              |
-    | HMAC Header Name   | X-Hub-Signature-256                                                     |
-    | Incoming Signature | sha256=4b24fa2a16d128************************************************** |
-    | Expected Signature | sha256=4b24fa2a16d128************************************************** |
-    | Is Valid?          | true                                                                    |
-    +--------------------+-------------------------------------------------------------------------+
-    {
-        "action": "closed",
-        "issue": {
-            "active_lock_reason": null,
-            "assignee": null,
-            "assignees": [],
-            :
-            :
-            "reactions": {
-                "+1": 0,
-                "-1": 0,
-                :
-                :
-            },
-            "repository_url": "https://api.github.com/repos/<github-org>/<repo>",
-            "state": "closed",
-            "state_reason": "not_planned",
-            "timeline_url": "https://api.github.com/repos/<github-org>/<repo>/issues/6/timeline",
-            :
-            "user": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/82952?v=4",
-                :
-                :
-            }
-        },
-        "organization": {
-            "avatar_url": "https://avatars.githubusercontent.com/u/159630054?v=4",
-            :
-            :
-        },
-        "repository": {
-            "allow_forking": false,
-            :
-            :
-            "open_issues": 3,
-            "open_issues_count": 3,
-            "owner": {
-                "avatar_url": "https://avatars.githubusercontent.com/u/159630054?v=4",
-                :
-                :
-            },
-            :
-            :
-        },
-        "sender": {
-            "avatar_url": "https://avatars.githubusercontent.com/u/82952?v=4",
-            :
-            :
-        }
-    }
+    ----------------------------------------------------------------------------------------------------
+    +--------------------------------------------------------------------------------------------------------------------------------------------------+
+    | Basic HTTP Debugger                                                                                                                              |
+    +------------------------------------------------------------------------+-------------------------------------------------------------------------+
+    | Version                                                                | <version>                                                               |
+    | Build                                                                  | <build-sha>                                                             |
+    | Request Time                                                           | 2024-12-26 07:37:29.704382 +0000 UTC                                    |
+    | HTTP Method                                                            | POST                                                                    |
+    +------------------------------------------------------------------------+-------------------------------------------------------------------------+
+    | Request Headers                                                                                                                                  |
+    +------------------------------------------------------------------------+-------------------------------------------------------------------------+
+    | Accept                                                                 | */*                                                                     |
+    | Accept-Encoding                                                        | gzip                                                                    |
+    | Content-Length                                                         | 11453                                                                   |
+    | Content-Type                                                           | application/json                                                        |
+    | User-Agent                                                             | GitHub-Hookshot/*******                                                 |
+    | X-Forwarded-For                                                        | 140.82.115.54                                                           |
+    | X-Forwarded-Host                                                       | ****.ngrok-free.app                                                     |
+    | X-Forwarded-Proto                                                      | https                                                                   |
+    | X-Github-Delivery                                                      | 0d27de20-****-11ef-****-78dbc150f59f                                    |
+    | X-Github-Event                                                         | issue_comment                                                           |
+    | X-Github-Hook-Id                                                       | ****02493                                                               |
+    | X-Github-Hook-Installation-Target-Id                                   | 90642****                                                               |
+    | X-Github-Hook-Installation-Target-Type                                 | repository                                                              |
+    | X-Hub-Signature                                                        | sha1=****************60a5a88092f5c4678b06fd1e                           |
+    | X-Hub-Signature-256                                                    | sha256=****************bebf86cbf7bc1c69a93ff8a3d1ff0cf20ee31ff57ed85ab2 |
+    +------------------------------------------------------------------------+-------------------------------------------------------------------------+
+    | Payload                                                                                                                                          |
+    +------------------------------------------------------------------------+-------------------------------------------------------------------------+
+    | HMAC Secret                                                            | *******************                                                     |
+    | HMAC Header Name                                                       | X-Hub-Signature-256                                                     |
+    | Incoming Signature                                                     | sha256=****************bebf86cbf7bc1c69a93ff8a3d1ff0cf20ee31ff57ed85ab2 |
+    | Expected Signature                                                     | sha256=****************bebf86cbf7bc1c69a93ff8a3d1ff0cf20ee31ff57ed85ab2 |
+    | Is Valid?                                                              | true                                                                    |
+    +------------------------------------------------------------------------+-------------------------------------------------------------------------+
+    | Incoming                                                               | application/json                                                        |
+    +------------------------------------------------------------------------+-------------------------------------------------------------------------+
+    | {                                                                                                                                                |
+    |     "action": "created",                                                                                                                         |
+    |     "comment": {                                                                                                                                 |
+    |          :                                                                                                                                       |
+    |          :                                                                                                                                       |
+    |         "reactions": {                                                                                                                           |
+    |             :                                                                                                                                    |
+    |             :                                                                                                                                    |
+    |         },                                                                                                                                       |
+    |         :                                                                                                                                        |
+    |         "user": {                                                                                                                                |
+    |             :                                                                                                                                    |
+    |             :                                                                                                                                    |
+    |             :                                                                                                                                    |
+    |         }                                                                                                                                        |
+    |     },                                                                                                                                           |
+    |     "issue": {                                                                                                                                   |
+    |         :                                                                                                                                        |
+    |         "reactions": {                                                                                                                           |
+    |         :                                                                                                                                        |
+    |         :                                                                                                                                        |
+    |         :                                                                                                                                        |
+    |         },                                                                                                                                       |
+    |         :                                                                                                                                        |
+    |         "user": {                                                                                                                                |
+    |         :                                                                                                                                        |
+    |         }                                                                                                                                        |
+    |     },                                                                                                                                           |
+    |     "organization": {                                                                                                                            |
+    |         :                                                                                                                                        |
+    |         :                                                                                                                                        |
+    |         :                                                                                                                                        |
+    |     },                                                                                                                                           |
+    |     "repository": {                                                                                                                              |
+    |         :                                                                                                                                        |
+    |         :                                                                                                                                        |
+    |         :                                                                                                                                        |
+    |         "owner": {                                                                                                                               |
+    |         :                                                                                                                                        |
+    |         },                                                                                                                                       |
+    |         :                                                                                                                                        |
+    |         :                                                                                                                                        |
+    |     },                                                                                                                                           |
+    |     "sender": {                                                                                                                                  |
+    |         :                                                                                                                                        |
+    |         :                                                                                                                                        |
+    |     }                                                                                                                                            |
+    | }                                                                                                                                                |
+    +--------------------------------------------------------------------------------------------------------------------------------------------------+
+    ----------------------------------------------------------------------------------------------------
+    Raw Http Request
+    ----------------------------------------------------------------------------------------------------
+    POST /webhook/github HTTP/1.1
+    Host: ****.ngrok-free.app
+    Accept: */*
+    Accept-Encoding: gzip
+    Content-Length: 11453
+    Content-Type: application/json
+    User-Agent: GitHub-Hookshot/*******
+    X-Forwarded-For: 140.82.115.54
+    X-Forwarded-Host: ****.ngrok-free.app
+    X-Forwarded-Proto: https
+    X-Github-Delivery: 0d27de20-****-11ef-****-78dbc150f59f
+    X-Github-Event: issue_comment
+    X-Github-Hook-Id: 51990****
+    X-Github-Hook-Installation-Target-Id: 90642****
+    X-Github-Hook-Installation-Target-Type: repository
+    X-Hub-Signature: sha1=************a68b60a5a88092f5c4678b06fd1e
+    X-Hub-Signature-256: sha256=************3d61bebf86cbf7bc1c69a93ff8a3d1ff0cf20ee31ff57ed85ab2
+    
+    {"action":"created","issue":{"url": ...} ... }
+    ----------------------------------------------------------------------------------------------------
+
 
 ---
 
@@ -266,6 +290,9 @@ rake test               # run test
 **2024-12-24**
 
 - refactor from scratch
+- disable color when output is file (due to ansi codes, output looks glitchy)
+- auto detect terminal and column width
+- add raw http request for response
 
 **2024-12-23**
 
@@ -299,10 +326,12 @@ rake test               # run test
 ```bash
 $ rake -T
 
+rake coverage           # show test coverage
 rake docker:build       # build docker image locally
 rake docker:run         # run docker image locally
 rake release[revision]  # release new version major,minor,patch, default: patch
 rake run                # run server (default port 9002)
+rake test               # run test
 ```
 
 ---

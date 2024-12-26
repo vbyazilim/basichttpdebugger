@@ -21,6 +21,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/vbyazilim/basichttpdebugger/internal/release"
 	"github.com/vbyazilim/basichttpdebugger/internal/validateutils"
+	"github.com/vbyazilim/basichttpdebugger/internal/writerutils"
 	"golang.org/x/term"
 )
 
@@ -63,6 +64,9 @@ type DebugServer struct {
 // Start starts http server.
 func (s *DebugServer) Start() error {
 	log.Printf("server listening at %s\n", s.ListenAddr)
+	if fname := writerutils.GetFilePathName(s.OutputWriter); fname != "" {
+		log.Printf("output is set to %s\n", fname)
+	}
 	if err := s.HTTPServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("server start error: %w", err)
 	}
@@ -175,6 +179,10 @@ func (dh debugHandlerOptions) drawLine() {
 }
 
 func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
+	colorTitle := text.Colors{text.Bold, text.FgWhite}
+	colorPayload := text.Colors{text.FgCyan}
+	colorError := text.Colors{text.BlinkSlow, text.FgRed}
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
@@ -186,8 +194,18 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 
 		t := table.NewWriter()
 		t.SetOutputMirror(options.writer)
-		t.SetTitle("Basic HTTP Debugger")
-		t.SetAllowedRowLength(options.getTerminalWidth())
+		t.SetTitle(colorTitle.Sprint("Basic HTTP Debugger"))
+
+		filename := writerutils.GetFilePathName(options.writer)
+		if filename == "/dev/stdout" {
+			t.SetAllowedRowLength(options.getTerminalWidth())
+		} else {
+			fmt.Fprintln(w, "to see the result, run")
+			fmt.Fprintf(w, "tail -f %s\n", filename)
+		}
+		t.SetColumnConfigs([]table.ColumnConfig{
+			{Number: 1, Colors: text.Colors{text.FgYellow}},
+		})
 		t.AppendRows([]table.Row{
 			{"Version", release.Version},
 			{"Build", release.BuildInformation[:12]},
@@ -195,7 +213,8 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 			{"HTTP Method", r.Method},
 		})
 		t.AppendSeparator()
-		t.AppendRow(table.Row{"Request Headers", "Request Headers"}, table.RowConfig{
+		titleRequestHeaders := colorTitle.Sprint("Request Headers")
+		t.AppendRow(table.Row{titleRequestHeaders, titleRequestHeaders}, table.RowConfig{
 			AutoMerge:      true,
 			AutoMergeAlign: text.AlignLeft,
 		})
@@ -211,10 +230,13 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 			t.AppendRow(table.Row{key, strings.Join(r.Header[key], ",")})
 		}
 
+		var bodyAsString string
+
 		switch r.Method {
 		case http.MethodPost, http.MethodPut, http.MethodPatch:
 			t.AppendSeparator()
-			t.AppendRow(table.Row{"Payload", "Payload"}, table.RowConfig{
+			titlePayload := colorTitle.Sprint("Payload")
+			t.AppendRow(table.Row{titlePayload, titlePayload}, table.RowConfig{
 				AutoMerge:      true,
 				AutoMergeAlign: text.AlignLeft,
 			})
@@ -222,7 +244,8 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 
 			body, err := io.ReadAll(r.Body)
 			if err != nil {
-				t.AppendRow(table.Row{err.Error(), err.Error()}, table.RowConfig{
+				txtErrorRead := colorError.Sprintf("read error: %s", err.Error())
+				t.AppendRow(table.Row{txtErrorRead, txtErrorRead}, table.RowConfig{
 					AutoMerge:      true,
 					AutoMergeAlign: text.AlignLeft,
 				})
@@ -233,7 +256,7 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 			defer func() { _ = r.Body.Close() }()
 
 			if options.hmacSecret != "" {
-				t.AppendRow(table.Row{"HMAC Secret", options.hmacHeaderName})
+				t.AppendRow(table.Row{"HMAC Secret", options.hmacSecret})
 			}
 			if options.hmacHeaderName != "" {
 				t.AppendRow(table.Row{"HMAC Header Name", options.hmacHeaderName})
@@ -253,12 +276,16 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 			}
 			requestContentType := r.Header.Get("Content-Type")
 			t.AppendRow(table.Row{"Incoming", requestContentType})
+			t.AppendSeparator()
+
+			bodyAsString = string(body)
 
 			switch requestContentType {
 			case "application/json":
 				var jsonBody map[string]any
 				if err = json.Unmarshal(body, &jsonBody); err != nil {
-					t.AppendRow(table.Row{err.Error(), err.Error()}, table.RowConfig{
+					txtErrorUnmarshal := colorError.Sprintf("json.Unmarshal error: %s", err.Error())
+					t.AppendRow(table.Row{txtErrorUnmarshal, txtErrorUnmarshal}, table.RowConfig{
 						AutoMerge:      true,
 						AutoMergeAlign: text.AlignLeft,
 					})
@@ -269,7 +296,8 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 
 				prettyJSON, errpj := json.MarshalIndent(jsonBody, "", "    ")
 				if errpj != nil {
-					t.AppendRow(table.Row{errpj.Error(), errpj.Error()}, table.RowConfig{
+					txtErrorMarshalIndent := colorError.Sprintf("json.MarshalIndent error: %s", errpj.Error())
+					t.AppendRow(table.Row{txtErrorMarshalIndent, txtErrorMarshalIndent}, table.RowConfig{
 						AutoMerge:      true,
 						AutoMergeAlign: text.AlignLeft,
 					})
@@ -279,25 +307,36 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 				}
 
 				t.AppendSeparator()
-				t.AppendRow(table.Row{string(prettyJSON), string(prettyJSON)}, table.RowConfig{
+				payloadJSON := colorPayload.Sprintf("%s", prettyJSON)
+				t.AppendRow(table.Row{payloadJSON, payloadJSON}, table.RowConfig{
 					AutoMerge:      true,
 					AutoMergeAlign: text.AlignLeft,
 				})
 			default:
+				payloadText := colorPayload.Sprintf("%s", body)
 				t.AppendSeparator()
-				t.AppendRow(table.Row{string(body), string(body)}, table.RowConfig{
-					AutoMerge:      true,
-					AutoMergeAlign: text.AlignLeft,
-				})
+				t.AppendRow(
+					table.Row{payloadText, payloadText},
+					table.RowConfig{
+						AutoMerge:      true,
+						AutoMergeAlign: text.AlignLeft,
+					},
+				)
 			}
 		}
 	RENDER:
 		t.Render()
-
-		// fmt.Fprintf(options.writer, "Time: %s\n", now)
-		// fmt.Println(options)
-		// fmt.Println(r.Method)
-		// fmt.Println(options.getTerminalWidth())
+		options.drawLine()
+		fmt.Fprintln(options.writer, "Raw Http Request")
+		options.drawLine()
+		fmt.Fprintf(options.writer, "%s %s %s\n", r.Method, r.URL.String(), r.Proto)
+		fmt.Fprintf(options.writer, "Host: %s\n", r.Host)
+		for _, key := range headerKeys {
+			fmt.Fprintf(options.writer, "%s: %s\n", key, strings.Join(r.Header[key], ","))
+		}
+		if bodyAsString != "" {
+			fmt.Fprintf(options.writer, "\n%s\n", bodyAsString)
+		}
 		options.drawLine()
 	}
 }
@@ -325,15 +364,20 @@ func New(options ...Option) (*DebugServer, error) {
 		return nil, fmt.Errorf("invalid output: %w", ErrValueRequired)
 	}
 
+	targetFilename := writerutils.GetFilePathName(opts.OutputWriter)
+	if opts.Color && targetFilename == "/dev/stdout" {
+		log.Println("color is enabled")
+		text.EnableColors()
+	} else {
+		text.DisableColors()
+	}
+
 	handlerOptions := debugHandlerOptions{
 		writer:         opts.OutputWriter,
 		hmacSecret:     opts.HMACSecret,
 		hmacHeaderName: opts.HMACHeaderName,
 		color:          opts.Color,
 	}
-
-	fmt.Printf("opts: %+v\n", opts)
-	fmt.Printf("handlerOptions: %+v\n", handlerOptions)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", debugHandlerFunc(&handlerOptions))

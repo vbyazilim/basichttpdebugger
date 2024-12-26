@@ -28,8 +28,6 @@ func Run() error {
 	color := flag.Bool("color", envutils.GetenvOrDefault("COLOR", false), "enable color")
 	flag.Parse()
 
-	fmt.Println("output", *output)
-
 	server, err := New(
 		WithListenAddr(*listenAddr),
 		WithHMACHeaderName(*hmacHeaderName),
