@@ -18,12 +18,22 @@ const (
 	modHundred = 100
 )
 
-var illegalChars = regexp.MustCompile(`[<>:"/\\|?*\s]+`)
+func illegalChars() *regexp.Regexp {
+	return regexp.MustCompile(`[<>:"/\\|?*\s]+`)
+}
+
+// NowFunc is used to get the current time. It defaults to time.Now, but
+// can be overridden in tests.
+var NowFunc = time.Now
+
+// UserHomeDirFunc is used to get the user's home directory.
+// It defaults to os.UserHomeDir but can be overridden in tests.
+var UserHomeDirFunc = os.UserHomeDir
 
 // FormatDate formats given date as Django's format date style (most of them).
 // https://docs.djangoproject.com/en/5.1/ref/templates/builtins/#date
 func FormatDate(format string, date *time.Time) string {
-	d := time.Now()
+	d := NowFunc()
 	if date != nil {
 		d = *date
 	}
@@ -84,7 +94,7 @@ func FormatDate(format string, date *time.Time) string {
 }
 
 func sanitizeFilename(input string) string {
-	return illegalChars.ReplaceAllString(input, "_")
+	return illegalChars().ReplaceAllString(input, "_")
 }
 
 // GetFormattedFilename returns formated filename.
@@ -103,8 +113,10 @@ func GetFormattedFilename(s string, req *http.Request) string {
 	sArgs := argReplacer.Replace(s)
 
 	if strings.HasPrefix(sArgs, "~") {
-		home, err := os.UserHomeDir()
+		home, err := UserHomeDirFunc()
 		if err != nil {
+			sArgs = sArgs[1:]
+
 			goto RETURN
 		}
 

@@ -1,6 +1,7 @@
 package stringutils_test
 
 import (
+	"errors"
 	"net/http"
 	"net/url"
 	"testing"
@@ -136,6 +137,17 @@ func parseDateWithNanoseconds(dateString string) *time.Time {
 }
 
 func TestGetFormattedFilename(t *testing.T) {
+	fixedTime := time.Date(2024, time.December, 26, 15, 0, 0, 0, time.UTC)
+	originalNowFunc := stringutils.NowFunc
+	stringutils.NowFunc = func() time.Time { return fixedTime }
+	defer func() { stringutils.NowFunc = originalNowFunc }()
+
+	originalHomeDirFunc := stringutils.UserHomeDirFunc
+	stringutils.UserHomeDirFunc = func() (string, error) {
+		return "/home/testuser", nil
+	}
+	defer func() { stringutils.UserHomeDirFunc = originalHomeDirFunc }()
+
 	tests := []struct {
 		name     string
 		format   string
@@ -150,6 +162,15 @@ func TestGetFormattedFilename(t *testing.T) {
 				URL:  &url.URL{Path: "/example/path"},
 			},
 			expected: "2024-12-26-localhost_9000-_example_path.raw",
+		},
+		{
+			name:   "Basic formatting with sanitized hostname and URL under home",
+			format: "~/%Y-%m-%d-{hostname}-{url}.raw",
+			req: &http.Request{
+				Host: "localhost:9000",
+				URL:  &url.URL{Path: "/example/path"},
+			},
+			expected: "/home/testuser/2024-12-26-localhost_9000-_example_path.raw",
 		},
 		{
 			name:   "Special characters in hostname and URL",
@@ -195,4 +216,27 @@ func TestGetFormattedFilename(t *testing.T) {
 			assert.Equal(t, test.expected, result)
 		})
 	}
+}
+
+func TestGetFormattedFilename_HomeErr(t *testing.T) {
+	fixedTime := time.Date(2024, time.December, 26, 15, 0, 0, 0, time.UTC)
+	originalNowFunc := stringutils.NowFunc
+	stringutils.NowFunc = func() time.Time { return fixedTime }
+	defer func() { stringutils.NowFunc = originalNowFunc }()
+
+	originalHomeDirFunc := stringutils.UserHomeDirFunc
+	stringutils.UserHomeDirFunc = func() (string, error) {
+		return "", errors.New("error")
+	}
+	defer func() { stringutils.UserHomeDirFunc = originalHomeDirFunc }()
+
+	format := "~/%Y-%m-%d-{hostname}-{url}.raw"
+	req := &http.Request{
+		Host: "localhost:9000",
+		URL:  &url.URL{Path: "/example/path"},
+	}
+	expected := "/2024-12-26-localhost_9000-_example_path.raw"
+
+	result := stringutils.GetFormattedFilename(format, req)
+	assert.Equal(t, expected, result)
 }
