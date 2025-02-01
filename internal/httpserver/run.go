@@ -14,18 +14,28 @@ import (
 
 const (
 	helpHMACHeaderName              = "name of your signature header, e.g. X-Hub-Signature-256"
+	helpSecretTokenHeaderName       = "name of your secret token header, e.g. X-Gitlab-Token"
 	defRawHTTPRequestFileSaveFormat = "%Y-%m-%d-%H%i%s-{hostname}-{url}.raw"
 )
 
 // Run creates server instance and runs.
 func Run() error {
 	listenAddr := flag.String("listen", envutils.GetenvOrDefault("LISTEN", defListenAddr), "listen addr")
+
+	hmacSecretValue := flag.String("hmac-secret", envutils.GetenvOrDefault("HMAC_SECRET", ""), "your HMAC secret value")
 	hmacHeaderName := flag.String(
 		"hmac-header-name",
 		envutils.GetenvOrDefault("HMAC_HEADER_NAME", ""),
 		helpHMACHeaderName,
 	)
-	hmacSecretValue := flag.String("hmac-secret", envutils.GetenvOrDefault("HMAC_SECRET", ""), "your HMAC secret value")
+
+	secretToken := flag.String("secret-token", envutils.GetenvOrDefault("SECRET_TOKEN", ""), "your secret token value")
+	secretTokenHeaderName := flag.String(
+		"secret-token-header-name",
+		envutils.GetenvOrDefault("SECRET_TOKEN_HEADER_NAME", ""),
+		helpSecretTokenHeaderName,
+	)
+
 	output := flag.String("output", envutils.GetenvOrDefault("OUTPUT", "stdout"), "output/write responses to")
 	color := flag.Bool("color", envutils.GetenvOrDefault("COLOR", false), "enable color")
 	saveRawHTTPRequest := flag.Bool(
@@ -51,6 +61,8 @@ func Run() error {
 		WithListenAddr(*listenAddr),
 		WithHMACHeaderName(*hmacHeaderName),
 		WithHMACSecret(*hmacSecretValue),
+		WithSecretToken(*secretToken),
+		WithSecretTokenHeaderName(*secretTokenHeaderName),
 		WithOutputWriter(*output),
 		WithColor(*color),
 		WithSaveRawHTTPRequest(*saveRawHTTPRequest),

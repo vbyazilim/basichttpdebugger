@@ -56,6 +56,8 @@ type DebugServer struct {
 	HMACSecret                   string
 	HMACHeaderName               string
 	RawHTTPRequestFileSaveFormat string
+	SecretToken                  string
+	SecretTokenHeaderName        string
 	ReadTimeout                  time.Duration
 	ReadHeaderTimeout            time.Duration
 	WriteTimeout                 time.Duration
@@ -158,6 +160,21 @@ func WithHMACHeaderName(s string) Option {
 	}
 }
 
+// WithSecretToken sets the secret value for secret token.
+func WithSecretToken(s string) Option {
+	return func(d *DebugServer) {
+		d.SecretToken = s
+	}
+}
+
+// WithSecretTokenHeaderName sets secret token header name value, will check this
+// http header name in request header.
+func WithSecretTokenHeaderName(s string) Option {
+	return func(d *DebugServer) {
+		d.SecretTokenHeaderName = s
+	}
+}
+
 // WithColor enables/disables colorful output.
 func WithColor(b bool) Option {
 	return func(d *DebugServer) {
@@ -183,6 +200,8 @@ type debugHandlerOptions struct {
 	writer                       io.WriteCloser
 	hmacSecret                   string
 	hmacHeaderName               string
+	secretToken                  string
+	secretTokenHeaderName        string
 	rawHTTPRequestFileSaveFormat string
 	color                        bool
 	saveRawHTTPRequest           bool
@@ -276,6 +295,20 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 				goto RENDER
 			}
 			defer func() { _ = r.Body.Close() }()
+
+			if options.secretToken != "" {
+				t.AppendRow(table.Row{"Secret Token", options.secretToken})
+			}
+			if options.secretTokenHeaderName != "" {
+				t.AppendRow(table.Row{"Secret Token Header Name", options.secretTokenHeaderName})
+			}
+
+			if options.secretToken != "" && options.secretTokenHeaderName != "" {
+				t.AppendRows([]table.Row{
+					{"Secret Token Matches?", r.Header.Get(options.secretTokenHeaderName) == options.secretToken},
+				})
+				t.AppendSeparator()
+			}
 
 			if options.hmacSecret != "" {
 				t.AppendRow(table.Row{"HMAC Secret", options.hmacSecret})
@@ -420,6 +453,8 @@ func New(options ...Option) (*DebugServer, error) {
 		writer:                       opts.OutputWriter,
 		hmacSecret:                   opts.HMACSecret,
 		hmacHeaderName:               opts.HMACHeaderName,
+		secretToken:                  opts.SecretToken,
+		secretTokenHeaderName:        opts.SecretTokenHeaderName,
 		color:                        opts.Color,
 		rawHTTPRequestFileSaveFormat: opts.RawHTTPRequestFileSaveFormat,
 		saveRawHTTPRequest:           opts.SaveRawHTTPRequest,

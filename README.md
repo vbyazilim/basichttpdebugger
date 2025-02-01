@@ -44,6 +44,10 @@ Usage of basichttpdebugger:
     	save filename format of raw http (default "%Y-%m-%d-%H%i%s-{hostname}-{url}.raw")
   -save-raw-http-request
     	enable saving of raw http request
+  -secret-token string
+    	your secret token value
+  -secret-token-header-name string
+    	name of your secret token header, e.g. X-Gitlab-Token
   -version
     	display version information
 ```
@@ -65,6 +69,14 @@ If you want to test HMAC validation;
 ```bash
 basichttpdebugger -listen ":8000" -hmac-secret "<secret>" -hmac-header-name "<X-HEADER-NAME>"
 basichttpdebugger -color -listen ":8000" -hmac-secret "<secret>" -hmac-header-name "<X-HEADER-NAME>"
+```
+
+Instead of HMAC validation, you can check against secret token/secret token
+header name. Consider you are testing GitLab webhooks and you’ll receive
+`X-Gitlab-Token` with a value `test`:
+
+```bash
+basichttpdebugger -listen ":8000" -secret-token-header-name "X-Gitlab-Token" -secret-token "test"
 ```
 
 Instead of standard output, pipe everything to file!
@@ -134,9 +146,13 @@ go run . -listen ":8000"  # listens at :8000
 # or if you have ruby installed, use rake tasks!
 rake                      # listens at :9002
 LISTEN=":8000" rake       # listens at :8000
+
 LISTEN=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" rake
 LISTEN=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" COLOR=1 rake
 LISTEN=":8000" HMAC_SECRET="<secret>" HMAC_HEADER_NAME="<X-HEADER-NAME>" OUTPUT="/tmp/foo" rake
+
+LISTEN=":8000" SECRET_TOKEN="<secret>" SECRET_TOKEN_HEADER_NAME="<X-HEADER-NAME>" rake
+
 SAVE_RAW_HTTP_REQUEST=t rake
 SAVE_RAW_HTTP_REQUEST=t SAVE_FORMAT="~/Desktop/%Y-%m-%d-%H%i%s-test.raw" rake
 ```
@@ -149,6 +165,8 @@ SAVE_RAW_HTTP_REQUEST=t SAVE_FORMAT="~/Desktop/%Y-%m-%d-%H%i%s-test.raw" rake
 |:-----|:---------------------|---------------|
 | `-hmac-header-name` | `HMAC_HEADER_NAME` | Not set |
 | `-hmac-secret` | `HMAC_SECRET` | Not set |
+| `-secret-token` | `SECRET_TOKEN` | Not set |
+| `-secret-token-header-name` | `SECRET_TOKEN_HEADER_NAME` | Not set |
 | `-color` | `COLOR` | `false` |
 | `-listen` | `LISTEN` | `:9002` |
 | `-output` | `OUTPUT` | `stdout` |
@@ -305,6 +323,16 @@ Here is how it looks, a GitHub webhook (trimmed, masked due to it’s huge/priva
     {"action":"created","issue":{"url": ...} ... }
     ----------------------------------------------------------------------------------------------------
 
+If you are checking secret token/secret token header (`test`, `X-Gitlab-Token`), 
+you’ll see something like this in Payload section:
+
+    +-----------------------------------+-----------------------------+
+    | Payload                                                         |                                                                                                                                    |
+    +-----------------------------------+-----------------------------+
+    | Secret Token                      | test                        |
+    | Secret Token Header Name          | X-Gitlab-Token              |
+    | Secret Token Matches?             | true                        |
+    +-----------------------------------+-----------------------------+
 
 ---
 
@@ -318,6 +346,7 @@ docker build -t <your-image> .
 docker run -p 9002:9002 <your-image>                  # run from default port
 docker run -p 8400:8400 <your-image> -listen ":8400"  # run from 8400
 docker run -p 8400:8400 <your-image> -listen ":8400" -hmac-secret "<secret>" -hmac-header-name "<X-HEADER-NAME>"
+docker run -p 8400:8400 <your-image> -listen ":8400" -secret-token "<secret>" -secret-token-header-name "<X-HEADER-NAME>"
 ```
 
 You can download/use from docker hub or ghcr:
@@ -333,6 +362,9 @@ docker run -p 8400:8400 vigo/basichttpdebugger -listen ":8400"    # run from 840
 
 # run from docker hub on port 9100 with hmac support
 docker run -p 9100:9100 vigo/basichttpdebugger -listen ":9100" -hmac-secret "<secret>" -hmac-header-name "<X-HEADER-NAME>"
+
+# run from docker hub on port 9100 with secret token/secret token header name support
+docker run -p 9100:9100 vigo/basichttpdebugger -listen ":9100" -secret-token "<secret>" -secret-token-header-name "<X-HEADER-NAME>"
 
 # run from ghcr on default port
 docker run -p 9002:9002 ghcr.io/vbyazilim/basichttpdebugger/basichttpdebugger:latest
@@ -362,6 +394,11 @@ rake test               # run test
 ---
 
 ## Change Log
+
+**2025-02-02**
+
+- improve `stringutils` tests
+- add secret token/secret token header name support
 
 **2024-12-24**
 
