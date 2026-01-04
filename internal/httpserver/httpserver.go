@@ -69,6 +69,13 @@ type DebugServer struct {
 // Start starts http server.
 func (s *DebugServer) Start() error {
 	log.Printf("server listening at %s\n", s.ListenAddr)
+	if s.HMACSecret != "" {
+		log.Print("hmac-secret et")
+	}
+	if s.HMACHeaderName != "" {
+		log.Printf("hmac-header-name: %s\n", s.HMACHeaderName)
+	}
+
 	if fname := writerutils.GetFilePathName(s.OutputWriter); fname != "" {
 		log.Printf("output is set to %s\n", fname)
 	}
@@ -132,16 +139,17 @@ func WithIdleTimeout(dur time.Duration) Option {
 // WithOutputWriter sets output, where to write incoming webhook.
 func WithOutputWriter(s string) Option {
 	return func(d *DebugServer) {
-		d.OutputWriter = os.Stdout
-
-		if s != "stdout" {
-			fwriter, err := os.Create(filepath.Clean(s))
-			if err == nil {
-				d.OutputWriter = fwriter
-			} else {
-				d.OutputWriter = nil
-			}
+		if s == "stdout" {
+			d.OutputWriter = os.Stdout
+			return
 		}
+
+		fwriter, err := os.Create(filepath.Clean(s))
+		if err != nil {
+			d.OutputWriter = nil
+			return
+		}
+		d.OutputWriter = fwriter
 	}
 }
 
@@ -320,12 +328,14 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 				signature := r.Header.Get(options.hmacHeaderName)
 				h := hmac.New(sha256.New, []byte(options.hmacSecret))
 				_, _ = h.Write(body)
-				expectedSignature := "sha256=" + hex.EncodeToString(h.Sum(nil))
+
+				computedHash := hex.EncodeToString(h.Sum(nil))
+				cleanSignature := strings.TrimPrefix(signature, "sha256=")
 
 				t.AppendRows([]table.Row{
-					{"Incoming Signature", signature},
-					{"Expected Signature", expectedSignature},
-					{"Is Valid?", hmac.Equal([]byte(expectedSignature), []byte(signature))},
+					{"Incoming Signature", cleanSignature},
+					{"Expected Signature", computedHash},
+					{"Is Valid?", hmac.Equal([]byte(computedHash), []byte(cleanSignature))},
 				})
 				t.AppendSeparator()
 			}
