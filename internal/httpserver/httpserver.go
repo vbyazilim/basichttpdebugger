@@ -132,16 +132,17 @@ func WithIdleTimeout(dur time.Duration) Option {
 // WithOutputWriter sets output, where to write incoming webhook.
 func WithOutputWriter(s string) Option {
 	return func(d *DebugServer) {
-		d.OutputWriter = os.Stdout
-
-		if s != "stdout" {
-			fwriter, err := os.Create(filepath.Clean(s))
-			if err == nil {
-				d.OutputWriter = fwriter
-			} else {
-				d.OutputWriter = nil
-			}
+		if s == "stdout" {
+			d.OutputWriter = os.Stdout
+			return
 		}
+
+		fwriter, err := os.Create(filepath.Clean(s))
+		if err != nil {
+			d.OutputWriter = nil
+			return
+		}
+		d.OutputWriter = fwriter
 	}
 }
 

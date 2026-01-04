@@ -49,7 +49,7 @@ func Run() error {
 		"save filename format of raw http",
 	)
 	version := flag.Bool("version", false, "display version information")
-	flag.Parse()
+	flag.Parse() //nolint:revive
 
 	if *version {
 		fmt.Fprintf(flag.CommandLine.Output(), "%s - build: %s\n", release.Version, release.BuildInformation)
