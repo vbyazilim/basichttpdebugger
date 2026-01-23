@@ -48,7 +48,8 @@ const (
 	defTerminalWidth     = 80
 
 	headerContentType   = "Content-Type"
-	asciiSpaceThreshold = 32 // ASCII control characters below this are non-printable
+	asciiSpaceThreshold = 32      // ASCII control characters below this are non-printable
+	maxImagePreviewSize = 5 << 20 // 5MB max for image preview in WebUI
 )
 
 // VerboseServer defines server behaviours.
@@ -504,7 +505,8 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 						}
 
 						// Store raw data for images (for WebUI preview)
-						if isImageContentType(fi.ContentType) {
+						// Only store if under maxImagePreviewSize to prevent memory issues
+						if isImageContentType(fi.ContentType) && fi.Size <= maxImagePreviewSize {
 							fi.RawData = partData
 						}
 

@@ -988,10 +988,14 @@
             eventSource.onerror = () => {
                 setStatus(false);
                 eventSource.close();
+                // Load requests even if SSE fails (fallback)
+                loadInitialRequests();
                 setTimeout(connectSSE, 3000);
             };
         }
 
+        // Load initial requests immediately on page load
+        loadInitialRequests();
         connectSSE();
     </script>
 </body>
