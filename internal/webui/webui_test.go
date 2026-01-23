@@ -276,3 +276,105 @@ func TestWebUI_eventsHandler(t *testing.T) {
 		pw.Close()
 	})
 }
+
+func TestWebUI_replayHandler(t *testing.T) {
+	t.Run("rejects non-POST methods", func(t *testing.T) {
+		store := requeststore.New(50)
+		webui := New(store, ":9003", ":9002")
+
+		req := httptest.NewRequest(http.MethodGet, "/api/replay", nil)
+		rec := httptest.NewRecorder()
+
+		webui.replayHandler(rec, req)
+
+		assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
+	})
+
+	t.Run("returns bad request for invalid JSON", func(t *testing.T) {
+		store := requeststore.New(50)
+		webui := New(store, ":9003", ":9002")
+
+		req := httptest.NewRequest(http.MethodPost, "/api/replay", strings.NewReader("invalid json"))
+		rec := httptest.NewRecorder()
+
+		webui.replayHandler(rec, req)
+
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("returns not found for unknown request ID", func(t *testing.T) {
+		store := requeststore.New(50)
+		webui := New(store, ":9003", ":9002")
+
+		body := `{"id": "unknown-id"}`
+		req := httptest.NewRequest(http.MethodPost, "/api/replay", strings.NewReader(body))
+		rec := httptest.NewRecorder()
+
+		webui.replayHandler(rec, req)
+
+		assert.Equal(t, http.StatusNotFound, rec.Code)
+	})
+
+	t.Run("replays request successfully", func(t *testing.T) {
+		// Create a mock debug server
+		debugServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "POST", r.Method)
+			assert.Equal(t, "/webhook", r.URL.Path)
+			assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+			assert.NotEmpty(t, r.Header.Get("X-Replayed-From"))
+
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"success": true}`))
+		}))
+		defer debugServer.Close()
+
+		store := requeststore.New(50)
+
+		// Extract host:port from the test server URL
+		debugAddr := strings.TrimPrefix(debugServer.URL, "http://")
+		webui := New(store, ":9003", debugAddr)
+
+		// Add a request to replay
+		store.Add(requeststore.Request{
+			ID:      "replay-test-1",
+			Method:  "POST",
+			URL:     "/webhook",
+			Headers: map[string]string{"Content-Type": "application/json"},
+			Body:    `{"data": "test"}`,
+		})
+
+		body := `{"id": "replay-test-1"}`
+		req := httptest.NewRequest(http.MethodPost, "/api/replay", strings.NewReader(body))
+		rec := httptest.NewRecorder()
+
+		webui.replayHandler(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Header().Get("Content-Type"), "application/json")
+
+		var response map[string]any
+		err := json.Unmarshal(rec.Body.Bytes(), &response)
+		require.NoError(t, err)
+		assert.Equal(t, float64(200), response["status"])
+	})
+
+	t.Run("returns bad gateway when debug server is unavailable", func(t *testing.T) {
+		store := requeststore.New(50)
+		// Point to a port that's not listening
+		webui := New(store, ":9003", "127.0.0.1:59999")
+
+		store.Add(requeststore.Request{
+			ID:     "replay-fail",
+			Method: "GET",
+			URL:    "/test",
+		})
+
+		body := `{"id": "replay-fail"}`
+		req := httptest.NewRequest(http.MethodPost, "/api/replay", strings.NewReader(body))
+		rec := httptest.NewRecorder()
+
+		webui.replayHandler(rec, req)
+
+		assert.Equal(t, http.StatusBadGateway, rec.Code)
+	})
+}
