@@ -802,4 +802,137 @@ func TestMultipartFormData(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, rec.Code)
 	})
+
+	t.Run("POST request with image file stores base64 data", func(t *testing.T) {
+		server, err := httpserver.New()
+		require.NoError(t, err)
+
+		var buf bytes.Buffer
+		writer := multipart.NewWriter(&buf)
+
+		// Create image part with proper content type
+		h := make(textproto.MIMEHeader)
+		h.Set("Content-Disposition", `form-data; name="avatar"; filename="test.png"`)
+		h.Set("Content-Type", "image/png")
+		part, _ := writer.CreatePart(h)
+
+		// Write fake PNG data (PNG magic bytes + some data)
+		pngData := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+		_, _ = part.Write(pngData)
+
+		writer.Close()
+
+		req := httptest.NewRequest(http.MethodPost, "/upload", &buf)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("POST request with JPEG image", func(t *testing.T) {
+		server, err := httpserver.New()
+		require.NoError(t, err)
+
+		var buf bytes.Buffer
+		writer := multipart.NewWriter(&buf)
+
+		h := make(textproto.MIMEHeader)
+		h.Set("Content-Disposition", `form-data; name="photo"; filename="photo.jpg"`)
+		h.Set("Content-Type", "image/jpeg")
+		part, _ := writer.CreatePart(h)
+
+		// Write fake JPEG data (JPEG magic bytes)
+		jpegData := []byte{0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10}
+		_, _ = part.Write(jpegData)
+
+		writer.Close()
+
+		req := httptest.NewRequest(http.MethodPost, "/upload", &buf)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("POST request with GIF image", func(t *testing.T) {
+		server, err := httpserver.New()
+		require.NoError(t, err)
+
+		var buf bytes.Buffer
+		writer := multipart.NewWriter(&buf)
+
+		h := make(textproto.MIMEHeader)
+		h.Set("Content-Disposition", `form-data; name="animation"; filename="anim.gif"`)
+		h.Set("Content-Type", "image/gif")
+		part, _ := writer.CreatePart(h)
+
+		// Write fake GIF data (GIF magic bytes)
+		gifData := []byte{0x47, 0x49, 0x46, 0x38, 0x39, 0x61}
+		_, _ = part.Write(gifData)
+
+		writer.Close()
+
+		req := httptest.NewRequest(http.MethodPost, "/upload", &buf)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("POST request with mixed files and fields", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "httpserver-multipart-mixed-*.log")
+		require.NoError(t, err)
+		defer os.Remove(tmpFile.Name())
+		tmpFile.Close()
+
+		server, err := httpserver.New(
+			httpserver.WithOutputWriter(tmpFile.Name()),
+		)
+		require.NoError(t, err)
+
+		var buf bytes.Buffer
+		writer := multipart.NewWriter(&buf)
+
+		// Add text field
+		_ = writer.WriteField("title", "My Upload")
+
+		// Add text file
+		textPart, _ := writer.CreateFormFile("readme", "readme.txt")
+		_, _ = textPart.Write([]byte("Hello World"))
+
+		// Add binary file (image) with actual binary control characters
+		h := make(textproto.MIMEHeader)
+		h.Set("Content-Disposition", `form-data; name="image"; filename="test.png"`)
+		h.Set("Content-Type", "image/png")
+		imgPart, _ := writer.CreatePart(h)
+		// Use bytes with control characters (< 32) to trigger binary detection
+		_, _ = imgPart.Write([]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05})
+
+		writer.Close()
+
+		req := httptest.NewRequest(http.MethodPost, "/upload", &buf)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		server.OutputWriter.Close()
+
+		content, err := os.ReadFile(tmpFile.Name())
+		require.NoError(t, err)
+		assert.Contains(t, string(content), "title")
+		assert.Contains(t, string(content), "My Upload")
+		assert.Contains(t, string(content), "readme.txt")
+		assert.Contains(t, string(content), "test.png")
+		// Binary data should be sanitized
+		assert.Contains(t, string(content), "[binary data:")
+	})
 }
