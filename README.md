@@ -60,6 +60,12 @@ Start the server;
 basichttpdebugger                   # listens at :9002
 ```
 
+> **Note:** The URL path doesn't matter. The server captures **all** incoming
+> requests regardless of the path. `http://localhost:9002/`,
+> `http://localhost:9002/webhook`, `http://localhost:9002/api/v1/users` - they
+> all work the same way. The paths used in examples below (`/login`, `/upload`,
+> etc.) are just for illustration purposes.
+
 Listen different port:
 
 ```bash
@@ -368,8 +374,8 @@ Here is how it looks, a GitHub webhook (trimmed, masked due to it’s huge/priva
     {"action":"created","issue":{"url": ...} ... }
     ----------------------------------------------------------------------------------------------------
 
-If you are checking secret token/secret token header (`test`, `X-Gitlab-Token`), 
-you’ll see something like this in Payload section:
+If you are checking secret token/secret token header (`test`, `X-Gitlab-Token`),
+you'll see something like this in Payload section:
 
     +-----------------------------------+-----------------------------+
     | Payload                                                         |                                                                                                                                    |
@@ -378,6 +384,133 @@ you’ll see something like this in Payload section:
     | Secret Token Header Name          | X-Gitlab-Token              |
     | Secret Token Matches?             | true                        |
     +-----------------------------------+-----------------------------+
+
+---
+
+## Form Data Support
+
+The debugger supports `application/x-www-form-urlencoded` content type. Form
+data is parsed and displayed in a table format:
+
+```bash
+curl -X POST http://localhost:9002/login \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=john&password=secret123&remember=true"
+```
+
+Output:
+
+    +-----------------------------------------------------+
+    | Payload                                             |
+    +--------------+--------------------------------------+
+    | Incoming     | application/x-www-form-urlencoded    |
+    +--------------+--------------------------------------+
+    | Form Data                                           |
+    +--------------+--------------------------------------+
+    | password     | secret123                            |
+    | remember     | true                                 |
+    | username     | john                                 |
+    +--------------+--------------------------------------+
+
+Form fields are sorted alphabetically. Multiple values for the same key are
+displayed comma-separated:
+
+```bash
+curl -X POST http://localhost:9002/colors \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "color=red&color=green&color=blue"
+```
+
+Output:
+
+    +--------------+--------------------------------------+
+    | Form Data                                           |
+    +--------------+--------------------------------------+
+    | color        | red, green, blue                     |
+    +--------------+--------------------------------------+
+
+URL-encoded special characters are automatically decoded:
+
+```bash
+curl -X POST http://localhost:9002/search \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "email=user%40example.com&query=hello+world"
+```
+
+Output:
+
+    +--------------+--------------------------------------+
+    | Form Data                                           |
+    +--------------+--------------------------------------+
+    | email        | user@example.com                     |
+    | query        | hello world                          |
+    +--------------+--------------------------------------+
+
+---
+
+## File Upload Support
+
+The debugger supports `multipart/form-data` content type for file uploads.
+Both form fields and files are parsed and displayed:
+
+```bash
+curl -X POST http://localhost:9002/upload \
+  -F "username=vigo" \
+  -F "description=Test upload" \
+  -F "config=@config.json"
+```
+
+Output:
+
+    +-----------------------------------------------------+
+    | Payload                                             |
+    +--------------+--------------------------------------+
+    | Incoming     | multipart/form-data; boundary=...    |
+    +--------------+--------------------------------------+
+    | Form Data                                           |
+    +--------------+--------------------------------------+
+    | description  | Test upload                          |
+    | username     | vigo                                 |
+    +--------------+--------------------------------------+
+    | Files                                               |
+    +--------------+--------------------------------------+
+    | config.json | 18 B | application/json               |
+    | {"theme": "dark"}                                   |
+    +-----------------------------------------------------+
+
+File metadata is displayed for all uploaded files:
+
+```bash
+curl -X POST http://localhost:9002/upload \
+  -F "avatar=@photo.png"
+```
+
+Output:
+
+    +-----------------------------------------------------+
+    | Files                                               |
+    +-----------------------------------------------------+
+    | photo.png | 2.5 KB | application/octet-stream       |
+    +-----------------------------------------------------+
+
+For small text files (under 1KB), the content is displayed. For larger files
+or binary files, only metadata (filename, size, content-type) is shown.
+
+**Image Preview in Web Dashboard:** When you upload image files (JPEG, PNG, GIF,
+etc.), the web dashboard displays a preview of the image alongside the file
+metadata.
+
+Multiple files can be uploaded at once:
+
+```bash
+curl -X POST http://localhost:9002/upload \
+  -F "file1=@readme.txt" \
+  -F "file2=@data.json" \
+  -F "image=@logo.png"
+```
+
+Form fields and files are displayed in separate sections, both in the terminal
+and in the web dashboard.
 
 ---
 
@@ -450,6 +583,19 @@ rake test               # run test
 
 ## Change Log
 
+**2026-01-23**
+
+- add `application/x-www-form-urlencoded` content type support
+- add `multipart/form-data` content type support for file uploads
+- form data is parsed and displayed in table format
+- file uploads show metadata (filename, size, content-type)
+- small text files (under 1KB) display content inline
+- multiple values for the same key are comma-separated
+- URL-encoded characters are automatically decoded
+- web dashboard supports form data and file upload display
+- web dashboard shows image preview for uploaded images (JPEG, PNG, GIF, etc.)
+- binary file content is sanitized in terminal output (`[binary data: X KB]`)
+
 **2025-01-23**
 
 - add web dashboard for real-time request monitoring (similar to ngrok)
@@ -489,8 +635,7 @@ rake test               # run test
 
 ## TODO
 
-- Add http form requests support
-- Add http file upload requests support
+- Add brew tap installation support
 
 ---
 

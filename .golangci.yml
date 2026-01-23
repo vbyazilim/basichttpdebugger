@@ -36,6 +36,7 @@ linters:
       exclude-functions:
         - fmt.Fprintln
         - fmt.Fprintf
+        - fmt.Fprint
     wrapcheck:
       ignore-package-globs:
         - encoding/*

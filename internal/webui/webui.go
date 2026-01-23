@@ -133,6 +133,10 @@ func (w *WebUI) eventsHandler(rw http.ResponseWriter, r *http.Request) {
 	ch := w.store.Subscribe()
 	defer w.store.Unsubscribe(ch)
 
+	// Send initial comment to establish connection
+	fmt.Fprint(rw, ": connected\n\n")
+	flusher.Flush()
+
 	for {
 		select {
 		case req := <-ch:
