@@ -53,6 +53,11 @@ func Run() error {
 		envutils.GetenvOrDefault("SAVE_FORMAT", defRawHTTPRequestFileSaveFormat),
 		"save filename format of raw http",
 	)
+	webListen := flag.String(
+		"web-listen",
+		envutils.GetenvOrDefault("WEB_LISTEN", ""),
+		"web dashboard listen addr (default: debug port + 1)",
+	)
 	version := flag.Bool("version", false, "display version information")
 	flag.Parse() //nolint:revive
 
@@ -86,7 +91,10 @@ func Run() error {
 		}
 	}()
 
-	webListenAddr := calculateWebPort(*listenAddr)
+	webListenAddr := *webListen
+	if webListenAddr == "" {
+		webListenAddr = calculateWebPort(*listenAddr)
+	}
 	webServer := webui.New(store, webListenAddr)
 
 	go func() {
