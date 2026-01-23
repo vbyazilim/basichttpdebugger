@@ -165,21 +165,40 @@ func TestWebUI_eventsHandler(t *testing.T) {
 		store := requeststore.New(50)
 		webui := New(store, ":9003", ":9002")
 
-		req := httptest.NewRequest(http.MethodGet, "/events", nil)
-		rec := httptest.NewRecorder()
+		// Use mockResponseWriter which is written once before goroutine reads
+		header := http.Header{}
+		pr, pw := io.Pipe()
 
-		done := make(chan struct{})
+		rec := &mockResponseWriter{
+			header: header,
+			writer: pw,
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/events", nil)
+
+		handlerDone := make(chan struct{})
 
 		go func() {
 			webui.eventsHandler(rec, req)
-			close(done)
+			close(handlerDone)
 		}()
 
+		// Wait for handler to set headers
 		time.Sleep(50 * time.Millisecond)
 
-		assert.Equal(t, "text/event-stream", rec.Header().Get("Content-Type"))
-		assert.Equal(t, "no-cache", rec.Header().Get("Cache-Control"))
-		assert.Equal(t, "keep-alive", rec.Header().Get("Connection"))
+		// Stop the webui to terminate the handler
+		_ = webui.Stop()
+
+		// Wait for handler to finish before reading headers
+		<-handlerDone
+
+		// Now safe to read headers
+		assert.Equal(t, "text/event-stream", header.Get("Content-Type"))
+		assert.Equal(t, "no-cache", header.Get("Cache-Control"))
+		assert.Equal(t, "keep-alive", header.Get("Connection"))
+
+		pr.Close()
+		pw.Close()
 	})
 
 	t.Run("broadcasts new requests", func(t *testing.T) {
