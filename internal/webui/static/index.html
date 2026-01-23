@@ -1013,6 +1013,13 @@
             initialLoadDone = true;
             connectSSE();
         });
+
+        // Refresh when tab becomes visible (catches requests missed while in background)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                loadInitialRequests();
+            }
+        });
     </script>
 </body>
 </html>
