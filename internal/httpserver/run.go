@@ -116,8 +116,8 @@ func Run() error {
 			log.Printf("web dashboard stop error: %v", webErr)
 		}
 
-		if err = server.Stop(); err != nil {
-			log.Printf("server stop error: %v", err)
+		if stopErr := server.Stop(); stopErr != nil {
+			log.Printf("server stop error: %v", stopErr)
 		}
 
 		close(closed)

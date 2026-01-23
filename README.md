@@ -368,8 +368,8 @@ Here is how it looks, a GitHub webhook (trimmed, masked due to it’s huge/priva
     {"action":"created","issue":{"url": ...} ... }
     ----------------------------------------------------------------------------------------------------
 
-If you are checking secret token/secret token header (`test`, `X-Gitlab-Token`), 
-you’ll see something like this in Payload section:
+If you are checking secret token/secret token header (`test`, `X-Gitlab-Token`),
+you'll see something like this in Payload section:
 
     +-----------------------------------+-----------------------------+
     | Payload                                                         |                                                                                                                                    |
@@ -378,6 +378,67 @@ you’ll see something like this in Payload section:
     | Secret Token Header Name          | X-Gitlab-Token              |
     | Secret Token Matches?             | true                        |
     +-----------------------------------+-----------------------------+
+
+---
+
+## Form Data Support
+
+The debugger supports `application/x-www-form-urlencoded` content type. Form
+data is parsed and displayed in a table format:
+
+```bash
+curl -X POST http://localhost:9002/login \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=john&password=secret123&remember=true"
+```
+
+Output:
+
+    +-----------------------------------------------------+
+    | Payload                                             |
+    +--------------+--------------------------------------+
+    | Incoming     | application/x-www-form-urlencoded    |
+    +--------------+--------------------------------------+
+    | Form Data                                           |
+    +--------------+--------------------------------------+
+    | password     | secret123                            |
+    | remember     | true                                 |
+    | username     | john                                 |
+    +--------------+--------------------------------------+
+
+Form fields are sorted alphabetically. Multiple values for the same key are
+displayed comma-separated:
+
+```bash
+curl -X POST http://localhost:9002/colors \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "color=red&color=green&color=blue"
+```
+
+Output:
+
+    +--------------+--------------------------------------+
+    | Form Data                                           |
+    +--------------+--------------------------------------+
+    | color        | red, green, blue                     |
+    +--------------+--------------------------------------+
+
+URL-encoded special characters are automatically decoded:
+
+```bash
+curl -X POST http://localhost:9002/search \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "email=user%40example.com&query=hello+world"
+```
+
+Output:
+
+    +--------------+--------------------------------------+
+    | Form Data                                           |
+    +--------------+--------------------------------------+
+    | email        | user@example.com                     |
+    | query        | hello world                          |
+    +--------------+--------------------------------------+
 
 ---
 
@@ -450,6 +511,13 @@ rake test               # run test
 
 ## Change Log
 
+**2026-01-23**
+
+- add `application/x-www-form-urlencoded` content type support
+- form data is parsed and displayed in table format
+- multiple values for the same key are comma-separated
+- URL-encoded characters are automatically decoded
+
 **2025-01-23**
 
 - add web dashboard for real-time request monitoring (similar to ngrok)
@@ -489,7 +557,6 @@ rake test               # run test
 
 ## TODO
 
-- Add http form requests support
 - Add http file upload requests support
 
 ---

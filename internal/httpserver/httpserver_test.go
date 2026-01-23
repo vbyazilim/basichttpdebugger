@@ -475,3 +475,152 @@ func TestLargePayload(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 	})
 }
+
+func TestFormURLEncodedBody(t *testing.T) {
+	t.Run("POST request with form urlencoded body", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "httpserver-form-test-*.log")
+		require.NoError(t, err)
+		defer os.Remove(tmpFile.Name())
+		tmpFile.Close()
+
+		server, err := httpserver.New(
+			httpserver.WithOutputWriter(tmpFile.Name()),
+		)
+		require.NoError(t, err)
+
+		body := "username=john&password=secret123&remember=true"
+		req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		server.OutputWriter.Close()
+
+		content, err := os.ReadFile(tmpFile.Name())
+		require.NoError(t, err)
+		assert.Contains(t, string(content), "Form Data")
+		assert.Contains(t, string(content), "username")
+		assert.Contains(t, string(content), "john")
+		assert.Contains(t, string(content), "password")
+		assert.Contains(t, string(content), "secret123")
+		assert.Contains(t, string(content), "remember")
+		assert.Contains(t, string(content), "true")
+	})
+
+	t.Run("POST request with form urlencoded and charset", func(t *testing.T) {
+		server, err := httpserver.New()
+		require.NoError(t, err)
+
+		body := "name=Ali+Veli&city=Istanbul"
+		req := httptest.NewRequest(http.MethodPost, "/form", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("POST request with URL encoded special characters", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "httpserver-form-special-*.log")
+		require.NoError(t, err)
+		defer os.Remove(tmpFile.Name())
+		tmpFile.Close()
+
+		server, err := httpserver.New(
+			httpserver.WithOutputWriter(tmpFile.Name()),
+		)
+		require.NoError(t, err)
+
+		body := "email=user%40example.com&query=hello+world&special=%26%3D%3F"
+		req := httptest.NewRequest(http.MethodPost, "/search", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		server.OutputWriter.Close()
+
+		content, err := os.ReadFile(tmpFile.Name())
+		require.NoError(t, err)
+		assert.Contains(t, string(content), "email")
+		assert.Contains(t, string(content), "user@example.com")
+		assert.Contains(t, string(content), "query")
+		assert.Contains(t, string(content), "hello world")
+	})
+
+	t.Run("POST request with empty form", func(t *testing.T) {
+		server, err := httpserver.New()
+		require.NoError(t, err)
+
+		body := ""
+		req := httptest.NewRequest(http.MethodPost, "/empty", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("POST request with multiple values for same key", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "httpserver-form-multi-*.log")
+		require.NoError(t, err)
+		defer os.Remove(tmpFile.Name())
+		tmpFile.Close()
+
+		server, err := httpserver.New(
+			httpserver.WithOutputWriter(tmpFile.Name()),
+		)
+		require.NoError(t, err)
+
+		body := "color=red&color=green&color=blue"
+		req := httptest.NewRequest(http.MethodPost, "/colors", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		server.OutputWriter.Close()
+
+		content, err := os.ReadFile(tmpFile.Name())
+		require.NoError(t, err)
+		assert.Contains(t, string(content), "color")
+		assert.Contains(t, string(content), "red, green, blue")
+	})
+
+	t.Run("PUT request with form urlencoded body", func(t *testing.T) {
+		server, err := httpserver.New()
+		require.NoError(t, err)
+
+		body := "status=active&role=admin"
+		req := httptest.NewRequest(http.MethodPut, "/user/123", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("Invalid form data", func(t *testing.T) {
+		server, err := httpserver.New()
+		require.NoError(t, err)
+
+		body := "%invalid%form%data%"
+		req := httptest.NewRequest(http.MethodPost, "/invalid", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+}

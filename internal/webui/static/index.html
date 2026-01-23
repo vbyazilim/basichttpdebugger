@@ -51,7 +51,7 @@
 
         header {
             background: var(--bg-secondary);
-            padding: 1rem 1.5rem;
+            padding: 1rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -300,6 +300,39 @@
             font-style: italic;
         }
 
+        .form-data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        .form-data-table th {
+            text-align: left;
+            padding: 0.5rem 0.75rem;
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .form-data-table td {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .form-data-table td:first-child {
+            color: var(--accent);
+            font-weight: 500;
+            width: 200px;
+        }
+
+        .form-data-table tr:last-child td {
+            border-bottom: none;
+        }
+
         .detail-header {
             display: flex;
             justify-content: space-between;
@@ -470,20 +503,58 @@
         }
 
         function formatBody(body, headers) {
-            if (!body) return '<span class="no-body">No body</span>';
+            if (!body) return { type: 'text', content: '<span class="no-body">No body</span>' };
 
             const contentType = headers['Content-Type'] || headers['content-type'] || '';
 
             if (contentType.includes('application/json')) {
                 try {
                     const parsed = JSON.parse(body);
-                    return escapeHtml(JSON.stringify(parsed, null, 2));
+                    return { type: 'text', content: escapeHtml(JSON.stringify(parsed, null, 2)) };
                 } catch (e) {
-                    return escapeHtml(body);
+                    return { type: 'text', content: escapeHtml(body) };
                 }
             }
 
-            return escapeHtml(body);
+            if (contentType.includes('application/x-www-form-urlencoded')) {
+                try {
+                    const params = new URLSearchParams(body);
+                    const entries = [...params.entries()];
+
+                    if (entries.length === 0) {
+                        return { type: 'text', content: '<span class="no-body">Empty form</span>' };
+                    }
+
+                    // Group values by key for multiple values
+                    const grouped = {};
+                    for (const [key, value] of entries) {
+                        if (!grouped[key]) {
+                            grouped[key] = [];
+                        }
+                        grouped[key].push(value);
+                    }
+
+                    const sortedKeys = Object.keys(grouped).sort();
+                    const rows = sortedKeys.map(key => {
+                        const values = grouped[key].join(', ');
+                        return `<tr><td>${escapeHtml(key)}</td><td>${escapeHtml(values)}</td></tr>`;
+                    }).join('');
+
+                    return { type: 'form', content: `<table class="form-data-table"><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>${rows}</tbody></table>` };
+                } catch (e) {
+                    return { type: 'text', content: escapeHtml(body) };
+                }
+            }
+
+            return { type: 'text', content: escapeHtml(body) };
+        }
+
+        function renderBodyContent(body, headers) {
+            const formatted = formatBody(body, headers);
+            if (formatted.type === 'form') {
+                return formatted.content;
+            }
+            return `<div class="body-content">${formatted.content}</div>`;
         }
 
         function renderRequestList() {
@@ -571,7 +642,7 @@
 
                 <div class="detail-section">
                     <h3>Body</h3>
-                    <div class="body-content">${formatBody(req.body, headers)}</div>
+                    ${renderBodyContent(req.body, headers)}
                 </div>
             `;
 
@@ -648,10 +719,29 @@
             statusText.textContent = connected ? 'Connected' : 'Disconnected';
         }
 
+        async function loadInitialRequests() {
+            try {
+                const response = await fetch('/api/requests');
+                const data = await response.json();
+                requests = data || [];
+                renderRequestList();
+
+                if (requests.length > 0) {
+                    selectRequest(requests[0].id);
+                }
+            } catch (e) {
+                console.error('Failed to load requests:', e);
+            }
+        }
+
         function connectSSE() {
             eventSource = new EventSource('/events');
 
-            eventSource.onopen = () => setStatus(true);
+            eventSource.onopen = () => {
+                setStatus(true);
+                // Load initial requests after SSE is connected
+                loadInitialRequests();
+            };
 
             eventSource.onmessage = (event) => {
                 try {
@@ -669,22 +759,6 @@
             };
         }
 
-        async function loadInitialRequests() {
-            try {
-                const response = await fetch('/api/requests');
-                const data = await response.json();
-                requests = data || [];
-                renderRequestList();
-
-                if (requests.length > 0) {
-                    selectRequest(requests[0].id);
-                }
-            } catch (e) {
-                console.error('Failed to load requests:', e);
-            }
-        }
-
-        loadInitialRequests();
         connectSSE();
     </script>
 </body>

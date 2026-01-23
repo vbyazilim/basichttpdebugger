@@ -183,8 +183,10 @@ func TestWebUI_eventsHandler(t *testing.T) {
 			close(handlerDone)
 		}()
 
-		// Wait for handler to set headers
-		time.Sleep(50 * time.Millisecond)
+		// Read the initial ": connected" comment (io.Pipe is unbuffered, must read to unblock writer)
+		reader := bufio.NewReader(pr)
+		_, _ = reader.ReadString('\n')
+		_, _ = reader.ReadString('\n')
 
 		// Stop the webui to terminate the handler
 		_ = webui.Stop()
@@ -219,16 +221,26 @@ func TestWebUI_eventsHandler(t *testing.T) {
 			webui.eventsHandler(rec, req)
 		}()
 
-		time.Sleep(50 * time.Millisecond)
+		reader := bufio.NewReader(pr)
 
+		// Read the initial ": connected" comment first (io.Pipe is unbuffered)
+		line, err := reader.ReadString('\n')
+		require.NoError(t, err)
+		assert.Equal(t, ": connected\n", line)
+
+		// Read the empty line after comment
+		_, err = reader.ReadString('\n')
+		require.NoError(t, err)
+
+		// Now add a request
 		store.Add(requeststore.Request{
 			ID:     "sse-test",
 			Method: "GET",
 			URL:    "/test",
 		})
 
-		reader := bufio.NewReader(pr)
-		line, err := reader.ReadString('\n')
+		// Read the data line
+		line, err = reader.ReadString('\n')
 		require.NoError(t, err)
 
 		assert.True(t, strings.HasPrefix(line, "data: "))
@@ -258,7 +270,10 @@ func TestWebUI_eventsHandler(t *testing.T) {
 			close(handlerDone)
 		}()
 
-		time.Sleep(50 * time.Millisecond)
+		// Read the initial ": connected" comment (io.Pipe is unbuffered, must read to unblock writer)
+		reader := bufio.NewReader(pr)
+		_, _ = reader.ReadString('\n')
+		_, _ = reader.ReadString('\n')
 
 		// Stop should cancel the context and cause handler to exit
 		err := webui.Stop()

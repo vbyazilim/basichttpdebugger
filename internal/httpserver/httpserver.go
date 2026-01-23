@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -355,8 +356,8 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 
 			bodyAsString = string(body)
 
-			switch requestContentType {
-			case "application/json":
+			switch {
+			case requestContentType == "application/json":
 				var jsonBody map[string]any
 				if err = json.Unmarshal(body, &jsonBody); err != nil {
 					txtErrorUnmarshal := colorError.Sprintf("json.Unmarshal error: %s", err.Error())
@@ -387,6 +388,37 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 					AutoMerge:      true,
 					AutoMergeAlign: text.AlignLeft,
 				})
+			case strings.HasPrefix(requestContentType, "application/x-www-form-urlencoded"):
+				formData, errForm := url.ParseQuery(bodyAsString)
+				if errForm != nil {
+					txtErrorForm := colorError.Sprintf("url.ParseQuery error: %s", errForm.Error())
+					t.AppendRow(table.Row{txtErrorForm, txtErrorForm}, table.RowConfig{
+						AutoMerge:      true,
+						AutoMergeAlign: text.AlignLeft,
+					})
+					t.AppendSeparator()
+
+					goto RENDER
+				}
+
+				titleFormData := colorTitle.Sprint("Form Data")
+				t.AppendRow(table.Row{titleFormData, titleFormData}, table.RowConfig{
+					AutoMerge:      true,
+					AutoMergeAlign: text.AlignLeft,
+				})
+				t.AppendSeparator()
+
+				formKeys := make([]string, 0, len(formData))
+				for key := range formData {
+					formKeys = append(formKeys, key)
+				}
+				sort.Strings(formKeys)
+
+				for _, key := range formKeys {
+					values := formData[key]
+					valueStr := colorPayload.Sprint(strings.Join(values, ", "))
+					t.AppendRow(table.Row{key, valueStr})
+				}
 			default:
 				payloadText := colorPayload.Sprintf("%s", body)
 				t.AppendSeparator()
