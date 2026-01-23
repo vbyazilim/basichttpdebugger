@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/vbyazilim/basichttpdebugger/internal/requeststore"
@@ -21,26 +23,32 @@ const (
 	defReadHeaderTimeout = 5 * time.Second
 	defWriteTimeout      = 30 * time.Second
 	defIdleTimeout       = 60 * time.Second
+
+	headerContentType = "Content-Type"
+	contentTypeJSON   = "application/json"
 )
 
 // WebUI represents the web dashboard server.
 type WebUI struct {
 	store      *requeststore.Store
 	listenAddr string
+	debugAddr  string
 	server     *http.Server
 }
 
 // New creates a new WebUI instance.
-func New(store *requeststore.Store, listenAddr string) *WebUI {
+func New(store *requeststore.Store, listenAddr, debugAddr string) *WebUI {
 	w := &WebUI{
 		store:      store,
 		listenAddr: listenAddr,
+		debugAddr:  debugAddr,
 	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", w.dashboardHandler)
 	mux.HandleFunc("/events", w.eventsHandler)
 	mux.HandleFunc("/api/requests", w.requestsHandler)
+	mux.HandleFunc("/api/replay", w.replayHandler)
 
 	w.server = &http.Server{
 		Addr:              listenAddr,
@@ -141,7 +149,7 @@ func (w *WebUI) requestsHandler(rw http.ResponseWriter, r *http.Request) {
 
 	requests := w.store.GetAll()
 
-	rw.Header().Set("Content-Type", "application/json")
+	rw.Header().Set(headerContentType, contentTypeJSON)
 	rw.Header().Set("Access-Control-Allow-Origin", "*")
 
 	if err := json.NewEncoder(rw).Encode(requests); err != nil {
@@ -149,4 +157,84 @@ func (w *WebUI) requestsHandler(rw http.ResponseWriter, r *http.Request) {
 
 		return
 	}
+}
+
+type replayRequest struct {
+	ID string `json:"id"`
+}
+
+func (w *WebUI) replayHandler(rw http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(rw, "method not allowed", http.StatusMethodNotAllowed)
+
+		return
+	}
+
+	var req replayRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(rw, "invalid request body", http.StatusBadRequest)
+
+		return
+	}
+
+	requests := w.store.GetAll()
+
+	var found *requeststore.Request
+
+	for i := range requests {
+		if requests[i].ID == req.ID {
+			found = &requests[i]
+
+			break
+		}
+	}
+
+	if found == nil {
+		http.Error(rw, "request not found", http.StatusNotFound)
+
+		return
+	}
+
+	debugURL := fmt.Sprintf("http://localhost%s%s", w.debugAddr, found.URL)
+
+	var bodyReader io.Reader
+	if found.Body != "" {
+		bodyReader = strings.NewReader(found.Body)
+	}
+
+	httpReq, err := http.NewRequestWithContext(r.Context(), found.Method, debugURL, bodyReader)
+	if err != nil {
+		http.Error(rw, "failed to create request", http.StatusInternalServerError)
+
+		return
+	}
+
+	for key, value := range found.Headers {
+		httpReq.Header.Set(key, value)
+	}
+
+	httpReq.Header.Set("X-Replayed-From", found.ID)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		http.Error(rw, "failed to replay request: "+err.Error(), http.StatusBadGateway)
+
+		return
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	body, _ := io.ReadAll(resp.Body)
+
+	rw.Header().Set(headerContentType, contentTypeJSON)
+	rw.Header().Set("Access-Control-Allow-Origin", "*")
+
+	response := map[string]any{
+		"status":     resp.StatusCode,
+		"statusText": resp.Status,
+		"body":       string(body),
+	}
+
+	_ = json.NewEncoder(rw).Encode(response)
 }

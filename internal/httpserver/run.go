@@ -95,7 +95,7 @@ func Run() error {
 	if webListenAddr == "" {
 		webListenAddr = calculateWebPort(*listenAddr)
 	}
-	webServer := webui.New(store, webListenAddr)
+	webServer := webui.New(store, webListenAddr, *listenAddr)
 
 	go func() {
 		if webErr := webServer.Start(); webErr != nil {

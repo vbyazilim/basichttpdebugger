@@ -299,6 +299,73 @@
             color: var(--text-dimmed);
             font-style: italic;
         }
+
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .detail-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .replay-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+
+        .replay-btn:hover {
+            opacity: 0.9;
+        }
+
+        .replay-btn:active {
+            transform: scale(0.98);
+        }
+
+        .replay-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .replay-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .replay-btn.loading svg {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .replay-success {
+            color: #22c55e;
+            font-size: 0.75rem;
+            margin-left: 0.5rem;
+        }
+
+        .replay-error {
+            color: #ef4444;
+            font-size: 0.75rem;
+            margin-left: 0.5rem;
+        }
     </style>
 </head>
 <body>
@@ -461,6 +528,16 @@
                 `).join('');
 
             detail.innerHTML = `
+                <div class="detail-header">
+                    <span class="detail-title">${req.method} ${escapeHtml(req.url)}</span>
+                    <button class="replay-btn" id="replayBtn" data-id="${req.id}" title="Replay this request">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Replay
+                    </button>
+                </div>
+
                 <div class="detail-section">
                     <h3>Request Info</h3>
                     <div class="detail-row">
@@ -498,7 +575,48 @@
                 </div>
             `;
 
+            document.getElementById('replayBtn').addEventListener('click', () => replayRequest(req.id));
             detail.style.display = 'block';
+        }
+
+        async function replayRequest(id) {
+            const btn = document.getElementById('replayBtn');
+            const originalText = btn.innerHTML;
+
+            btn.disabled = true;
+            btn.classList.add('loading');
+            btn.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Replaying...
+            `;
+
+            try {
+                const response = await fetch('/api/replay', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+
+                if (!response.ok) {
+                    throw new Error(await response.text());
+                }
+
+                btn.innerHTML = originalText + '<span class="replay-success">Sent!</span>';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                }, 2000);
+            } catch (e) {
+                btn.innerHTML = originalText + '<span class="replay-error">Failed</span>';
+                console.error('Replay failed:', e);
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                }, 3000);
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('loading');
+            }
         }
 
         function selectRequest(id) {

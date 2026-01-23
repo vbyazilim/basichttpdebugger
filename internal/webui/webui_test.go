@@ -35,7 +35,7 @@ func (m *mockResponseWriter) Flush() {}
 
 func TestNew(t *testing.T) {
 	store := requeststore.New(50)
-	webui := New(store, ":9003")
+	webui := New(store, ":9003", ":9002")
 
 	assert.NotNil(t, webui)
 	assert.Equal(t, ":9003", webui.ListenAddr())
@@ -43,7 +43,7 @@ func TestNew(t *testing.T) {
 
 func TestWebUI_dashboardHandler(t *testing.T) {
 	store := requeststore.New(50)
-	webui := New(store, ":9003")
+	webui := New(store, ":9003", ":9002")
 
 	t.Run("serves index.html at root", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -69,7 +69,7 @@ func TestWebUI_dashboardHandler(t *testing.T) {
 func TestWebUI_requestsHandler(t *testing.T) {
 	t.Run("returns empty array when no requests", func(t *testing.T) {
 		store := requeststore.New(50)
-		webui := New(store, ":9003")
+		webui := New(store, ":9003", ":9002")
 
 		req := httptest.NewRequest(http.MethodGet, "/api/requests", nil)
 		rec := httptest.NewRecorder()
@@ -88,7 +88,7 @@ func TestWebUI_requestsHandler(t *testing.T) {
 			Method: "POST",
 			URL:    "/webhook",
 		})
-		webui := New(store, ":9003")
+		webui := New(store, ":9003", ":9002")
 
 		req := httptest.NewRequest(http.MethodGet, "/api/requests", nil)
 		rec := httptest.NewRecorder()
@@ -108,7 +108,7 @@ func TestWebUI_requestsHandler(t *testing.T) {
 
 	t.Run("rejects non-GET methods", func(t *testing.T) {
 		store := requeststore.New(50)
-		webui := New(store, ":9003")
+		webui := New(store, ":9003", ":9002")
 
 		req := httptest.NewRequest(http.MethodPost, "/api/requests", nil)
 		rec := httptest.NewRecorder()
@@ -122,7 +122,7 @@ func TestWebUI_requestsHandler(t *testing.T) {
 func TestWebUI_eventsHandler(t *testing.T) {
 	t.Run("sets SSE headers", func(t *testing.T) {
 		store := requeststore.New(50)
-		webui := New(store, ":9003")
+		webui := New(store, ":9003", ":9002")
 
 		req := httptest.NewRequest(http.MethodGet, "/events", nil)
 		rec := httptest.NewRecorder()
@@ -143,7 +143,7 @@ func TestWebUI_eventsHandler(t *testing.T) {
 
 	t.Run("broadcasts new requests", func(t *testing.T) {
 		store := requeststore.New(50)
-		webui := New(store, ":9003")
+		webui := New(store, ":9003", ":9002")
 
 		pr, pw := io.Pipe()
 
