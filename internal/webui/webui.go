@@ -34,14 +34,20 @@ type WebUI struct {
 	listenAddr string
 	debugAddr  string
 	server     *http.Server
+	cancel     context.CancelFunc
+	ctx        context.Context
 }
 
 // New creates a new WebUI instance.
 func New(store *requeststore.Store, listenAddr, debugAddr string) *WebUI {
+	ctx, cancel := context.WithCancel(context.Background())
+
 	w := &WebUI{
 		store:      store,
 		listenAddr: listenAddr,
 		debugAddr:  debugAddr,
+		ctx:        ctx,
+		cancel:     cancel,
 	}
 
 	mux := http.NewServeMux()
@@ -75,6 +81,9 @@ func (w *WebUI) Start() error {
 
 // Stop stops the web dashboard server.
 func (w *WebUI) Stop() error {
+	// Cancel context to stop SSE handlers first
+	w.cancel()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -135,6 +144,8 @@ func (w *WebUI) eventsHandler(rw http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(rw, "data: %s\n\n", data)
 			flusher.Flush()
 		case <-r.Context().Done():
+			return
+		case <-w.ctx.Done():
 			return
 		}
 	}
