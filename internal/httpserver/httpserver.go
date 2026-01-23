@@ -20,6 +20,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/vbyazilim/basichttpdebugger/internal/release"
+	"github.com/vbyazilim/basichttpdebugger/internal/requeststore"
 	"github.com/vbyazilim/basichttpdebugger/internal/stringutils"
 	"github.com/vbyazilim/basichttpdebugger/internal/validateutils"
 	"github.com/vbyazilim/basichttpdebugger/internal/writerutils"
@@ -52,6 +53,7 @@ type VerboseServer interface {
 type DebugServer struct {
 	HTTPServer                   *http.Server
 	OutputWriter                 io.WriteCloser
+	Store                        *requeststore.Store
 	ListenAddr                   string
 	HMACSecret                   string
 	HMACHeaderName               string
@@ -204,8 +206,16 @@ func WithRawHTTPRequestFileSaveFormat(s string) Option {
 	}
 }
 
+// WithStore sets the request store for web dashboard.
+func WithStore(s *requeststore.Store) Option {
+	return func(d *DebugServer) {
+		d.Store = s
+	}
+}
+
 type debugHandlerOptions struct {
 	writer                       io.WriteCloser
+	store                        *requeststore.Store
 	hmacSecret                   string
 	hmacHeaderName               string
 	secretToken                  string
@@ -425,6 +435,24 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 		if rawHRw != nil {
 			_ = rawHRw.Close()
 		}
+
+		if options.store == nil {
+			return
+		}
+
+		headers := make(map[string]string)
+		for _, key := range headerKeys {
+			headers[key] = strings.Join(r.Header[key], ",")
+		}
+		options.store.Add(requeststore.Request{
+			Time:    now,
+			Method:  r.Method,
+			URL:     r.URL.String(),
+			Headers: headers,
+			Body:    bodyAsString,
+			Host:    r.Host,
+			Proto:   r.Proto,
+		})
 	}
 }
 
@@ -461,6 +489,7 @@ func New(options ...Option) (*DebugServer, error) {
 
 	handlerOptions := debugHandlerOptions{
 		writer:                       opts.OutputWriter,
+		store:                        opts.Store,
 		hmacSecret:                   opts.HMACSecret,
 		hmacHeaderName:               opts.HMACHeaderName,
 		secretToken:                  opts.SecretToken,
