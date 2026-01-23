@@ -6,8 +6,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/textproto"
 	"os"
 	"strings"
 	"testing"
@@ -617,6 +619,183 @@ func TestFormURLEncodedBody(t *testing.T) {
 		body := "%invalid%form%data%"
 		req := httptest.NewRequest(http.MethodPost, "/invalid", strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+}
+
+func TestMultipartFormData(t *testing.T) {
+	t.Run("POST request with multipart form data", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "httpserver-multipart-test-*.log")
+		require.NoError(t, err)
+		defer os.Remove(tmpFile.Name())
+		tmpFile.Close()
+
+		server, err := httpserver.New(
+			httpserver.WithOutputWriter(tmpFile.Name()),
+		)
+		require.NoError(t, err)
+
+		var buf bytes.Buffer
+		writer := multipart.NewWriter(&buf)
+
+		// Add form field
+		_ = writer.WriteField("username", "vigo")
+		_ = writer.WriteField("description", "Test upload")
+
+		// Add small text file
+		part, _ := writer.CreateFormFile("config", "config.json")
+		_, _ = part.Write([]byte(`{"theme": "dark"}`))
+
+		writer.Close()
+
+		req := httptest.NewRequest(http.MethodPost, "/upload", &buf)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		server.OutputWriter.Close()
+
+		content, err := os.ReadFile(tmpFile.Name())
+		require.NoError(t, err)
+		assert.Contains(t, string(content), "Form Data")
+		assert.Contains(t, string(content), "username")
+		assert.Contains(t, string(content), "vigo")
+		assert.Contains(t, string(content), "description")
+		assert.Contains(t, string(content), "Files")
+		assert.Contains(t, string(content), "config.json")
+	})
+
+	t.Run("POST request with only file upload", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "httpserver-multipart-file-*.log")
+		require.NoError(t, err)
+		defer os.Remove(tmpFile.Name())
+		tmpFile.Close()
+
+		server, err := httpserver.New(
+			httpserver.WithOutputWriter(tmpFile.Name()),
+		)
+		require.NoError(t, err)
+
+		var buf bytes.Buffer
+		writer := multipart.NewWriter(&buf)
+
+		// Add a file only
+		part, _ := writer.CreateFormFile("avatar", "avatar.png")
+		// Write some fake PNG data (larger than 1KB to skip content display)
+		fakeData := make([]byte, 2048)
+		for i := range fakeData {
+			fakeData[i] = byte(i % 256)
+		}
+		_, _ = part.Write(fakeData)
+
+		writer.Close()
+
+		req := httptest.NewRequest(http.MethodPost, "/upload", &buf)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		server.OutputWriter.Close()
+
+		content, err := os.ReadFile(tmpFile.Name())
+		require.NoError(t, err)
+		assert.Contains(t, string(content), "Files")
+		assert.Contains(t, string(content), "avatar.png")
+		assert.Contains(t, string(content), "2.0 KB")
+	})
+
+	t.Run("POST request with small text file shows content", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "httpserver-multipart-small-*.log")
+		require.NoError(t, err)
+		defer os.Remove(tmpFile.Name())
+		tmpFile.Close()
+
+		server, err := httpserver.New(
+			httpserver.WithOutputWriter(tmpFile.Name()),
+		)
+		require.NoError(t, err)
+
+		var buf bytes.Buffer
+		writer := multipart.NewWriter(&buf)
+
+		// Add small JSON file
+		h := make(textproto.MIMEHeader)
+		h.Set("Content-Disposition", `form-data; name="data"; filename="data.json"`)
+		h.Set("Content-Type", "application/json")
+		part, _ := writer.CreatePart(h)
+		_, _ = part.Write([]byte(`{"name": "test"}`))
+
+		writer.Close()
+
+		req := httptest.NewRequest(http.MethodPost, "/upload", &buf)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		server.OutputWriter.Close()
+
+		content, err := os.ReadFile(tmpFile.Name())
+		require.NoError(t, err)
+		assert.Contains(t, string(content), "data.json")
+		assert.Contains(t, string(content), `{"name": "test"}`)
+	})
+
+	t.Run("POST request with multiple values for same field", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "httpserver-multipart-multi-*.log")
+		require.NoError(t, err)
+		defer os.Remove(tmpFile.Name())
+		tmpFile.Close()
+
+		server, err := httpserver.New(
+			httpserver.WithOutputWriter(tmpFile.Name()),
+		)
+		require.NoError(t, err)
+
+		var buf bytes.Buffer
+		writer := multipart.NewWriter(&buf)
+
+		_ = writer.WriteField("tag", "go")
+		_ = writer.WriteField("tag", "http")
+		_ = writer.WriteField("tag", "debug")
+
+		writer.Close()
+
+		req := httptest.NewRequest(http.MethodPost, "/tags", &buf)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		server.OutputWriter.Close()
+
+		content, err := os.ReadFile(tmpFile.Name())
+		require.NoError(t, err)
+		assert.Contains(t, string(content), "tag")
+		assert.Contains(t, string(content), "go, http, debug")
+	})
+
+	t.Run("Invalid multipart boundary", func(t *testing.T) {
+		server, err := httpserver.New()
+		require.NoError(t, err)
+
+		body := "invalid multipart data"
+		req := httptest.NewRequest(http.MethodPost, "/upload", strings.NewReader(body))
+		req.Header.Set("Content-Type", "multipart/form-data")
 		rec := httptest.NewRecorder()
 
 		server.HTTPServer.Handler.ServeHTTP(rec, req)

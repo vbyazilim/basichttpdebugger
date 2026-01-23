@@ -9,6 +9,15 @@ import (
 
 const defaultMaxSize = 50
 
+// FileAttachment represents an uploaded file with base64 encoded data.
+type FileAttachment struct {
+	FieldName   string `json:"fieldName"`
+	Filename    string `json:"filename"`
+	ContentType string `json:"contentType"`
+	Size        int    `json:"size"`
+	Data        string `json:"data,omitempty"` // base64 encoded for images
+}
+
 // Request represents a captured HTTP request.
 type Request struct {
 	ID      string            `json:"id"`
@@ -19,6 +28,7 @@ type Request struct {
 	Body    string            `json:"body"`
 	Host    string            `json:"host"`
 	Proto   string            `json:"proto"`
+	Files   []FileAttachment  `json:"files,omitempty"`
 }
 
 // Store holds captured requests in memory with pub/sub support for SSE.

@@ -442,6 +442,72 @@ Output:
 
 ---
 
+## File Upload Support
+
+The debugger supports `multipart/form-data` content type for file uploads.
+Both form fields and files are parsed and displayed:
+
+```bash
+curl -X POST http://localhost:9002/upload \
+  -F "username=vigo" \
+  -F "description=Test upload" \
+  -F "config=@config.json"
+```
+
+Output:
+
+    +-----------------------------------------------------+
+    | Payload                                             |
+    +--------------+--------------------------------------+
+    | Incoming     | multipart/form-data; boundary=...    |
+    +--------------+--------------------------------------+
+    | Form Data                                           |
+    +--------------+--------------------------------------+
+    | description  | Test upload                          |
+    | username     | vigo                                 |
+    +--------------+--------------------------------------+
+    | Files                                               |
+    +--------------+--------------------------------------+
+    | config.json | 18 B | application/json               |
+    | {"theme": "dark"}                                   |
+    +-----------------------------------------------------+
+
+File metadata is displayed for all uploaded files:
+
+```bash
+curl -X POST http://localhost:9002/upload \
+  -F "avatar=@photo.png"
+```
+
+Output:
+
+    +-----------------------------------------------------+
+    | Files                                               |
+    +-----------------------------------------------------+
+    | photo.png | 2.5 KB | application/octet-stream       |
+    +-----------------------------------------------------+
+
+For small text files (under 1KB), the content is displayed. For larger files
+or binary files, only metadata (filename, size, content-type) is shown.
+
+**Image Preview in Web Dashboard:** When you upload image files (JPEG, PNG, GIF,
+etc.), the web dashboard displays a preview of the image alongside the file
+metadata.
+
+Multiple files can be uploaded at once:
+
+```bash
+curl -X POST http://localhost:9002/upload \
+  -F "file1=@readme.txt" \
+  -F "file2=@data.json" \
+  -F "image=@logo.png"
+```
+
+Form fields and files are displayed in separate sections, both in the terminal
+and in the web dashboard.
+
+---
+
 ## Docker
 
 For local docker usage, default expose port is: `9002` (debug) and `9003` (web dashboard).
@@ -514,9 +580,15 @@ rake test               # run test
 **2026-01-23**
 
 - add `application/x-www-form-urlencoded` content type support
+- add `multipart/form-data` content type support for file uploads
 - form data is parsed and displayed in table format
+- file uploads show metadata (filename, size, content-type)
+- small text files (under 1KB) display content inline
 - multiple values for the same key are comma-separated
 - URL-encoded characters are automatically decoded
+- web dashboard supports form data and file upload display
+- web dashboard shows image preview for uploaded images (JPEG, PNG, GIF, etc.)
+- binary file content is sanitized in terminal output (`[binary data: X KB]`)
 
 **2025-01-23**
 
@@ -557,7 +629,7 @@ rake test               # run test
 
 ## TODO
 
-- Add http file upload requests support
+- Add brew tap installation support
 
 ---
 
