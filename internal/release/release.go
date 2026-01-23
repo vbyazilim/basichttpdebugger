@@ -1,7 +1,7 @@
 package release
 
 // Version is the current version of service.
-const Version = "0.6.0"
+const Version = "0.6.1"
 
 // BuildInformation holds current build information.
-var BuildInformation = "12678c020e4d3eec2c65609f9264d8d1d6853b36"
+var BuildInformation = "09250a02f4ff8a203ef5b96645045a758370a560"
