@@ -24,6 +24,12 @@ You can install directly the latest version if you have go installation;
 go install github.com/vbyazilim/basichttpdebugger@latest
 ```
 
+or; from brew;
+
+```bash
+brew install vbyazilim/basichttpdebugger/basichttpdebugger
+```
+
 Then run:
 
 ```bash
@@ -595,6 +601,7 @@ rake test               # run test
 - web dashboard supports form data and file upload display
 - web dashboard shows image preview for uploaded images (JPEG, PNG, GIF, etc.)
 - binary file content is sanitized in terminal output (`[binary data: X KB]`)
+- add homebrew-tap
 
 **2025-01-23**
 
