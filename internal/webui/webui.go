@@ -134,7 +134,7 @@ func (w *WebUI) eventsHandler(rw http.ResponseWriter, r *http.Request) {
 	defer w.store.Unsubscribe(ch)
 
 	// Send initial comment to establish connection
-	_, _ = fmt.Fprint(rw, ": connected\n\n")
+	fmt.Fprint(rw, ": connected\n\n")
 	flusher.Flush()
 
 	for {
