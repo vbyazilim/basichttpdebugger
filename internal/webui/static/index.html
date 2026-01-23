@@ -967,13 +967,14 @@
             }
         }
 
+        let initialLoadDone = false;
+
         function connectSSE() {
             eventSource = new EventSource('/events');
 
             eventSource.onopen = () => {
                 setStatus(true);
-                // Load initial requests after SSE is connected
-                loadInitialRequests();
+                // Don't reload here - initial load already done, avoids race condition
             };
 
             eventSource.onmessage = (event) => {
@@ -988,15 +989,19 @@
             eventSource.onerror = () => {
                 setStatus(false);
                 eventSource.close();
-                // Load requests even if SSE fails (fallback)
-                loadInitialRequests();
+                // Only load if never loaded before (SSE failed on first connect)
+                if (!initialLoadDone) {
+                    loadInitialRequests().then(() => { initialLoadDone = true; });
+                }
                 setTimeout(connectSSE, 3000);
             };
         }
 
-        // Load initial requests immediately on page load
-        loadInitialRequests();
-        connectSSE();
+        // Load initial requests BEFORE connecting SSE to avoid race condition
+        loadInitialRequests().then(() => {
+            initialLoadDone = true;
+            connectSSE();
+        });
     </script>
 </body>
 </html>
