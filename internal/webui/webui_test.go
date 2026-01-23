@@ -177,4 +177,42 @@ func TestWebUI_eventsHandler(t *testing.T) {
 		cancel()
 		pw.Close()
 	})
+
+	t.Run("stops gracefully when webui context is cancelled", func(t *testing.T) {
+		store := requeststore.New(50)
+		webui := New(store, ":9003", ":9002")
+
+		pr, pw := io.Pipe()
+
+		rec := &mockResponseWriter{
+			header: http.Header{},
+			writer: pw,
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/events", nil)
+
+		handlerDone := make(chan struct{})
+
+		go func() {
+			webui.eventsHandler(rec, req)
+			close(handlerDone)
+		}()
+
+		time.Sleep(50 * time.Millisecond)
+
+		// Stop should cancel the context and cause handler to exit
+		err := webui.Stop()
+		require.NoError(t, err)
+
+		// Handler should exit quickly after Stop
+		select {
+		case <-handlerDone:
+			// Success - handler exited
+		case <-time.After(1 * time.Second):
+			t.Fatal("handler did not exit after Stop()")
+		}
+
+		pr.Close()
+		pw.Close()
+	})
 }
