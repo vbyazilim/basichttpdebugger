@@ -60,6 +60,12 @@ Start the server;
 basichttpdebugger                   # listens at :9002
 ```
 
+> **Note:** The URL path doesn't matter. The server captures **all** incoming
+> requests regardless of the path. `http://localhost:9002/`,
+> `http://localhost:9002/webhook`, `http://localhost:9002/api/v1/users` - they
+> all work the same way. The paths used in examples below (`/login`, `/upload`,
+> etc.) are just for illustration purposes.
+
 Listen different port:
 
 ```bash
