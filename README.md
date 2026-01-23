@@ -103,9 +103,14 @@ basichttpdebugger -listen ":8000" -color
 
 ## Web Dashboard
 
-A browser-based dashboard is available for real-time request monitoring, similar
-to ngrok's web interface. The web dashboard starts automatically when you run
-the server.
+<p>
+  <img src="screens/webui-light.png" alt="Webui Light" width="49%">
+  <img src="screens/webui-dark.png" alt="Webui Dark" width="49%">
+</p>
+
+A browser-based dashboard is available for real-time request monitoring,
+similar to [ngrok][ngrok]’s web interface. The web dashboard starts
+automatically when you run the server.
 
 By default, the web dashboard runs on **debug port + 1**:
 
@@ -514,3 +519,4 @@ This project is intended to be a safe, welcoming space for collaboration, and
 contributors are expected to adhere to the [code of conduct][coc].
 
 [coc]: https://github.com/vbyazilim/basichttpdebugger/blob/main/CODE_OF_CONDUCT.md
+[ngrok]: https://ngrok.com/
