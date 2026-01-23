@@ -641,8 +641,13 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 			fmt.Fprintf(mwr, "%s: %s\n", key, strings.Join(r.Header[key], ","))
 		}
 		if bodyAsString != "" {
+			// Terminal gets sanitized body (no binary garbage)
 			sanitizedBody := sanitizeBodyForDisplay(bodyAsString, r.Header.Get(headerContentType))
-			fmt.Fprintf(mwr, "\n%s\n", sanitizedBody)
+			fmt.Fprintf(options.writer, "\n%s\n", sanitizedBody)
+			// Raw file gets unsanitized body (for replay with nc)
+			if rawHRw != nil {
+				fmt.Fprintf(rawHRw, "\n%s\n", bodyAsString)
+			}
 		}
 		options.drawLine()
 		if rawHRw != nil {
