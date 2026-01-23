@@ -541,6 +541,15 @@
             return ct.toLowerCase().startsWith('image/');
         }
 
+        // Whitelist of safe image content types to prevent XSS via malicious Content-Type headers
+        const SAFE_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/bmp', 'image/x-icon'];
+
+        function sanitizeImageContentType(ct) {
+            if (!ct) return 'application/octet-stream';
+            const normalized = ct.toLowerCase().split(';')[0].trim();
+            return SAFE_IMAGE_TYPES.includes(normalized) ? normalized : 'application/octet-stream';
+        }
+
         function binaryStringToBase64(str) {
             // Convert binary string to base64
             try {
@@ -664,8 +673,10 @@
                     let fileInfoContent = `${escapeHtml(file.filename)} | ${sizeStr} | ${escapeHtml(file.contentType)}`;
 
                     // Show image preview if we have base64 data (in same cell)
+                    // Use sanitized content-type to prevent XSS via malicious headers
                     if (file.data && isImageContentType(file.contentType)) {
-                        const dataUrl = `data:${file.contentType};base64,${file.data}`;
+                        const safeContentType = sanitizeImageContentType(file.contentType);
+                        const dataUrl = `data:${safeContentType};base64,${file.data}`;
                         fileInfoContent += `<div class="image-preview"><img src="${dataUrl}" alt="${escapeHtml(file.filename)}" /></div>`;
                     }
 
