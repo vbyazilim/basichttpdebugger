@@ -50,6 +50,8 @@ Usage of basichttpdebugger:
     	name of your secret token header, e.g. X-Gitlab-Token
   -version
     	display version information
+  -web-listen string
+    	web dashboard listen addr (default: debug port + 1)
 ```
 
 Start the server;
@@ -96,6 +98,43 @@ Well, add some colors :)
 ```bash
 basichttpdebugger -listen ":8000" -color
 ```
+
+---
+
+## Web Dashboard
+
+A browser-based dashboard is available for real-time request monitoring, similar
+to ngrok's web interface. The web dashboard starts automatically when you run
+the server.
+
+By default, the web dashboard runs on **debug port + 1**:
+
+```bash
+basichttpdebugger -listen ":9002"    # Web dashboard at http://localhost:9003
+basichttpdebugger -listen ":8000"    # Web dashboard at http://localhost:8001
+```
+
+You can specify a custom port for the web dashboard:
+
+```bash
+basichttpdebugger -listen ":9002" -web-listen ":4040"    # Web dashboard at http://localhost:4040
+```
+
+Or use environment variable:
+
+```bash
+WEB_LISTEN=":4040" basichttpdebugger
+```
+
+**Features:**
+
+- Real-time updates via Server-Sent Events (SSE)
+- Two-panel layout: request list on left, detail view on right
+- Last 50 requests stored in memory
+- JSON pretty-printing for request bodies
+- Auto-reconnect on connection loss
+
+---
 
 Color output is **disabled** if the output is set to file! You can also
 save/capture Raw HTTP Request for later use too:
@@ -172,6 +211,7 @@ SAVE_RAW_HTTP_REQUEST=t SAVE_FORMAT="~/Desktop/%Y-%m-%d-%H%i%s-test.raw" rake
 | `-output` | `OUTPUT` | `stdout` |
 | `-save-raw-http-request` | `SAVE_RAW_HTTP_REQUEST` | `false` |
 | `-save-format` | `SAVE_FORMAT` | `%Y-%m-%d-%H%i%s-{hostname}.raw` |
+| `-web-listen` | `WEB_LISTEN` | debug port + 1 |
 
 ---
 
@@ -338,15 +378,25 @@ you’ll see something like this in Payload section:
 
 ## Docker
 
-For local docker usage, default expose port is: `9002`.
+For local docker usage, default expose port is: `9002` (debug) and `9003` (web dashboard).
 
 ```bash
 docker build -t <your-image> .
 
-docker run -p 9002:9002 <your-image>                  # run from default port
-docker run -p 8400:8400 <your-image> -listen ":8400"  # run from 8400
-docker run -p 8400:8400 <your-image> -listen ":8400" -hmac-secret "<secret>" -hmac-header-name "<X-HEADER-NAME>"
-docker run -p 8400:8400 <your-image> -listen ":8400" -secret-token "<secret>" -secret-token-header-name "<X-HEADER-NAME>"
+# run with both debug and web dashboard ports
+docker run -p 9002:9002 -p 9003:9003 <your-image>
+
+# run from custom port (web dashboard will be at 8401)
+docker run -p 8400:8400 -p 8401:8401 <your-image> -listen ":8400"
+
+# run with custom web dashboard port
+docker run -p 8400:8400 -p 4040:4040 <your-image> -listen ":8400" -web-listen ":4040"
+
+# with hmac support
+docker run -p 8400:8400 -p 8401:8401 <your-image> -listen ":8400" -hmac-secret "<secret>" -hmac-header-name "<X-HEADER-NAME>"
+
+# with secret token support
+docker run -p 8400:8400 -p 8401:8401 <your-image> -listen ":8400" -secret-token "<secret>" -secret-token-header-name "<X-HEADER-NAME>"
 ```
 
 You can download/use from docker hub or ghcr:
@@ -394,6 +444,11 @@ rake test               # run test
 ---
 
 ## Change Log
+
+**2025-01-23**
+
+- add web dashboard for real-time request monitoring (similar to ngrok)
+- add `-web-listen` flag and `WEB_LISTEN` environment variable
 
 **2025-02-02**
 
