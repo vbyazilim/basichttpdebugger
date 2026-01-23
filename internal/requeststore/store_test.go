@@ -143,14 +143,21 @@ func TestStore_Unsubscribe(t *testing.T) {
 		assert.Equal(t, 0, store.ListenerCount())
 	})
 
-	t.Run("closes the channel", func(t *testing.T) {
+	t.Run("no longer receives requests after unsubscribe", func(t *testing.T) {
 		store := New(10)
 		ch := store.Subscribe()
 
 		store.Unsubscribe(ch)
 
-		_, ok := <-ch
-		assert.False(t, ok)
+		// Add a request - it should not be received on the unsubscribed channel
+		store.Add(Request{ID: "after-unsub", Method: "GET", URL: "/test"})
+
+		select {
+		case <-ch:
+			t.Fatal("should not receive on unsubscribed channel")
+		case <-time.After(50 * time.Millisecond):
+			// Expected - no message received
+		}
 	})
 }
 

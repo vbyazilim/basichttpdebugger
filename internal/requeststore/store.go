@@ -102,6 +102,8 @@ func (s *Store) Subscribe() chan Request {
 }
 
 // Unsubscribe removes a channel from the listeners list.
+// Note: We don't close the channel here to avoid race conditions with Add().
+// The channel will be garbage collected when both sender and receiver are done.
 func (s *Store) Unsubscribe(ch chan Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -112,7 +114,6 @@ func (s *Store) Unsubscribe(ch chan Request) {
 		}
 
 		s.listeners = append(s.listeners[:i], s.listeners[i+1:]...)
-		close(ch)
 
 		break
 	}

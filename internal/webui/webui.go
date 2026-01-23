@@ -206,7 +206,7 @@ func (w *WebUI) replayHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	debugURL := fmt.Sprintf("http://localhost%s%s", w.debugAddr, found.URL)
+	debugURL := buildDebugURL(w.debugAddr, found.URL)
 
 	var bodyReader io.Reader
 	if found.Body != "" {
@@ -248,4 +248,15 @@ func (w *WebUI) replayHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = json.NewEncoder(rw).Encode(response)
+}
+
+// buildDebugURL constructs the debug server URL from the listen address.
+// Handles both ":port" format and "host:port" format.
+func buildDebugURL(debugAddr, path string) string {
+	host := debugAddr
+	if strings.HasPrefix(debugAddr, ":") {
+		host = "localhost" + debugAddr
+	}
+
+	return fmt.Sprintf("http://%s%s", host, path) //nolint:revive // http is correct for local debug server
 }

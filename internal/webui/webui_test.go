@@ -41,6 +41,47 @@ func TestNew(t *testing.T) {
 	assert.Equal(t, ":9003", webui.ListenAddr())
 }
 
+func TestBuildDebugURL(t *testing.T) {
+	tests := []struct {
+		name      string
+		debugAddr string
+		path      string
+		expected  string
+	}{
+		{
+			name:      "port only format",
+			debugAddr: ":9002",
+			path:      "/webhook",
+			expected:  "http://localhost:9002/webhook",
+		},
+		{
+			name:      "host and port format",
+			debugAddr: "127.0.0.1:9002",
+			path:      "/webhook",
+			expected:  "http://127.0.0.1:9002/webhook",
+		},
+		{
+			name:      "ipv6 localhost",
+			debugAddr: "[::1]:9002",
+			path:      "/api/test",
+			expected:  "http://[::1]:9002/api/test",
+		},
+		{
+			name:      "custom host",
+			debugAddr: "0.0.0.0:8080",
+			path:      "/",
+			expected:  "http://0.0.0.0:8080/",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := buildDebugURL(tt.debugAddr, tt.path)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
 func TestWebUI_dashboardHandler(t *testing.T) {
 	store := requeststore.New(50)
 	webui := New(store, ":9003", ":9002")
