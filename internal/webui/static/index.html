@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Basic HTTP Debugger - Web Dashboard</title>
+    <style>
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-tertiary: #0f3460;
+            --bg-code: #0d1117;
+            --text-primary: #eee;
+            --text-secondary: #ccc;
+            --text-muted: #888;
+            --text-dimmed: #666;
+            --border-color: #0f3460;
+            --accent: #e94560;
+            --highlight-bg: rgba(233, 69, 96, 0.3);
+        }
+
+        [data-theme="light"] {
+            --bg-primary: #f5f5f5;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #e8e8e8;
+            --bg-code: #f8f8f8;
+            --text-primary: #1a1a2e;
+            --text-secondary: #333;
+            --text-muted: #666;
+            --text-dimmed: #999;
+            --border-color: #ddd;
+            --accent: #d63384;
+            --highlight-bg: rgba(214, 51, 132, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        header {
+            background: var(--bg-secondary);
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        header h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+
+        .status-dot.connected {
+            background: #4ade80;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.disconnected {
+            background: #ef4444;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .theme-toggle {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .theme-toggle:hover {
+            background: var(--border-color);
+        }
+
+        .theme-toggle svg {
+            width: 18px;
+            height: 18px;
+            color: var(--text-secondary);
+        }
+
+        .theme-toggle .sun-icon { display: none; }
+        .theme-toggle .moon-icon { display: block; }
+
+        [data-theme="light"] .theme-toggle .sun-icon { display: block; }
+        [data-theme="light"] .theme-toggle .moon-icon { display: none; }
+
+        main {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .request-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .request-item {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .request-item:hover {
+            background: var(--bg-primary);
+        }
+
+        .request-item.active {
+            background: var(--bg-tertiary);
+        }
+
+        .request-item.new {
+            animation: highlight 1s ease-out;
+        }
+
+        @keyframes highlight {
+            from { background: var(--highlight-bg); }
+            to { background: transparent; }
+        }
+
+        .request-method {
+            display: inline-block;
+            padding: 0.125rem 0.375rem;
+            border-radius: 3px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-right: 0.5rem;
+            color: #fff;
+        }
+
+        .request-method.GET { background: #3b82f6; }
+        .request-method.POST { background: #22c55e; }
+        .request-method.PUT { background: #f59e0b; }
+        .request-method.PATCH { background: #a855f7; }
+        .request-method.DELETE { background: #ef4444; }
+        .request-method.HEAD { background: #06b6d4; }
+        .request-method.OPTIONS { background: #64748b; }
+
+        .request-url {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            word-break: break-all;
+        }
+
+        .request-time {
+            font-size: 0.75rem;
+            color: var(--text-dimmed);
+            margin-top: 0.25rem;
+        }
+
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-dimmed);
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .detail-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .detail-section h3 {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .detail-row {
+            display: flex;
+            padding: 0.375rem 0;
+            font-size: 0.875rem;
+        }
+
+        .detail-label {
+            width: 150px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .detail-value {
+            color: var(--text-primary);
+            word-break: break-all;
+        }
+
+        .headers-table {
+            width: 100%;
+            font-size: 0.875rem;
+        }
+
+        .headers-table tr {
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .headers-table td {
+            padding: 0.5rem 0;
+            vertical-align: top;
+        }
+
+        .headers-table td:first-child {
+            width: 200px;
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .body-content {
+            background: var(--bg-code);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 1rem;
+            overflow-x: auto;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.8125rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .no-body {
+            color: var(--text-dimmed);
+            font-style: italic;
+        }
+
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .detail-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .replay-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+
+        .replay-btn:hover {
+            opacity: 0.9;
+        }
+
+        .replay-btn:active {
+            transform: scale(0.98);
+        }
+
+        .replay-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .replay-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .replay-btn.loading svg {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .replay-success {
+            color: #22c55e;
+            font-size: 0.75rem;
+            margin-left: 0.5rem;
+        }
+
+        .replay-error {
+            color: #ef4444;
+            font-size: 0.75rem;
+            margin-left: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Basic HTTP Debugger</h1>
+        <div class="header-right">
+            <div class="status">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Connecting...</span>
+            </div>
+            <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+                <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <aside class="sidebar">
+            <div class="sidebar-header">Requests</div>
+            <div class="request-list" id="requestList"></div>
+        </aside>
+
+        <section class="content" id="content">
+            <div class="empty-state" id="emptyState">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />
+                </svg>
+                <p>Waiting for requests...</p>
+            </div>
+            <div id="detail" style="display: none;"></div>
+        </section>
+    </main>
+
+    <script>
+        // Theme management
+        function getSystemTheme() {
+            return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        }
+
+        function getStoredTheme() {
+            return localStorage.getItem('theme');
+        }
+
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+        }
+
+        function initTheme() {
+            const stored = getStoredTheme();
+            const theme = stored || getSystemTheme();
+            setTheme(theme);
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'light' ? 'dark' : 'light';
+            setTheme(next);
+        }
+
+        // Listen for system theme changes
+        window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', (e) => {
+            if (!getStoredTheme()) {
+                setTheme(e.matches ? 'light' : 'dark');
+            }
+        });
+
+        document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+        initTheme();
+
+        // Request management
+        const requestList = document.getElementById('requestList');
+        const content = document.getElementById('content');
+        const emptyState = document.getElementById('emptyState');
+        const detail = document.getElementById('detail');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+
+        let requests = [];
+        let selectedId = null;
+        let eventSource = null;
+
+        function formatTime(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleTimeString('en-US', { hour12: false });
+        }
+
+        function formatDateTime(dateStr) {
+            const date = new Date(dateStr);
+            return date.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatBody(body, headers) {
+            if (!body) return '<span class="no-body">No body</span>';
+
+            const contentType = headers['Content-Type'] || headers['content-type'] || '';
+
+            if (contentType.includes('application/json')) {
+                try {
+                    const parsed = JSON.parse(body);
+                    return escapeHtml(JSON.stringify(parsed, null, 2));
+                } catch (e) {
+                    return escapeHtml(body);
+                }
+            }
+
+            return escapeHtml(body);
+        }
+
+        function renderRequestList() {
+            if (requests.length === 0) {
+                requestList.innerHTML = '';
+                emptyState.style.display = 'flex';
+                detail.style.display = 'none';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+
+            requestList.innerHTML = requests.map(req => `
+                <div class="request-item ${req.id === selectedId ? 'active' : ''}" data-id="${req.id}">
+                    <div>
+                        <span class="request-method ${req.method}">${req.method}</span>
+                        <span class="request-url">${escapeHtml(req.url)}</span>
+                    </div>
+                    <div class="request-time">${formatTime(req.time)}</div>
+                </div>
+            `).join('');
+
+            requestList.querySelectorAll('.request-item').forEach(item => {
+                item.addEventListener('click', () => selectRequest(item.dataset.id));
+            });
+        }
+
+        function renderDetail(req) {
+            if (!req) {
+                detail.style.display = 'none';
+                return;
+            }
+
+            const headers = req.headers || {};
+            const headerRows = Object.entries(headers)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([key, value]) => `
+                    <tr>
+                        <td>${escapeHtml(key)}</td>
+                        <td>${escapeHtml(value)}</td>
+                    </tr>
+                `).join('');
+
+            detail.innerHTML = `
+                <div class="detail-header">
+                    <span class="detail-title">${req.method} ${escapeHtml(req.url)}</span>
+                    <button class="replay-btn" id="replayBtn" data-id="${req.id}" title="Replay this request">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Replay
+                    </button>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Request Info</h3>
+                    <div class="detail-row">
+                        <span class="detail-label">Time</span>
+                        <span class="detail-value">${formatDateTime(req.time)}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Method</span>
+                        <span class="detail-value">${req.method}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">URL</span>
+                        <span class="detail-value">${escapeHtml(req.url)}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Host</span>
+                        <span class="detail-value">${escapeHtml(req.host || '-')}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Protocol</span>
+                        <span class="detail-value">${escapeHtml(req.proto || '-')}</span>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Headers</h3>
+                    <table class="headers-table">
+                        ${headerRows || '<tr><td colspan="2" class="no-body">No headers</td></tr>'}
+                    </table>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Body</h3>
+                    <div class="body-content">${formatBody(req.body, headers)}</div>
+                </div>
+            `;
+
+            document.getElementById('replayBtn').addEventListener('click', () => replayRequest(req.id));
+            detail.style.display = 'block';
+        }
+
+        async function replayRequest(id) {
+            const btn = document.getElementById('replayBtn');
+            const originalText = btn.innerHTML;
+
+            btn.disabled = true;
+            btn.classList.add('loading');
+            btn.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Replaying...
+            `;
+
+            try {
+                const response = await fetch('/api/replay', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+
+                if (!response.ok) {
+                    throw new Error(await response.text());
+                }
+
+                btn.innerHTML = originalText + '<span class="replay-success">Sent!</span>';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                }, 2000);
+            } catch (e) {
+                btn.innerHTML = originalText + '<span class="replay-error">Failed</span>';
+                console.error('Replay failed:', e);
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                }, 3000);
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('loading');
+            }
+        }
+
+        function selectRequest(id) {
+            selectedId = id;
+            renderRequestList();
+            const req = requests.find(r => r.id === id);
+            renderDetail(req);
+        }
+
+        function addRequest(req, isNew = false) {
+            requests = [req, ...requests].slice(0, 50);
+            renderRequestList();
+
+            if (isNew && requests.length > 0) {
+                const firstItem = requestList.querySelector('.request-item');
+                if (firstItem) {
+                    firstItem.classList.add('new');
+                    setTimeout(() => firstItem.classList.remove('new'), 1000);
+                }
+            }
+
+            if (!selectedId && requests.length > 0) {
+                selectRequest(requests[0].id);
+            }
+        }
+
+        function setStatus(connected) {
+            statusDot.className = 'status-dot ' + (connected ? 'connected' : 'disconnected');
+            statusText.textContent = connected ? 'Connected' : 'Disconnected';
+        }
+
+        function connectSSE() {
+            eventSource = new EventSource('/events');
+
+            eventSource.onopen = () => setStatus(true);
+
+            eventSource.onmessage = (event) => {
+                try {
+                    const req = JSON.parse(event.data);
+                    addRequest(req, true);
+                } catch (e) {
+                    console.error('Failed to parse SSE data:', e);
+                }
+            };
+
+            eventSource.onerror = () => {
+                setStatus(false);
+                eventSource.close();
+                setTimeout(connectSSE, 3000);
+            };
+        }
+
+        async function loadInitialRequests() {
+            try {
+                const response = await fetch('/api/requests');
+                const data = await response.json();
+                requests = data || [];
+                renderRequestList();
+
+                if (requests.length > 0) {
+                    selectRequest(requests[0].id);
+                }
+            } catch (e) {
+                console.error('Failed to load requests:', e);
+            }
+        }
+
+        loadInitialRequests();
+        connectSSE();
+    </script>
+</body>
+</html>

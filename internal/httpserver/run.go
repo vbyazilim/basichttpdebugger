@@ -6,16 +6,21 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/vbyazilim/basichttpdebugger/internal/envutils"
 	"github.com/vbyazilim/basichttpdebugger/internal/release"
+	"github.com/vbyazilim/basichttpdebugger/internal/requeststore"
+	"github.com/vbyazilim/basichttpdebugger/internal/webui"
 )
 
 const (
 	helpHMACHeaderName              = "name of your signature header, e.g. X-Hub-Signature-256"
 	helpSecretTokenHeaderName       = "name of your secret token header, e.g. X-Gitlab-Token"
 	defRawHTTPRequestFileSaveFormat = "%Y-%m-%d-%H%i%s-{hostname}-{url}.raw"
+	defWebDashboardMaxRequests      = 50
 )
 
 // Run creates server instance and runs.
@@ -48,6 +53,11 @@ func Run() error {
 		envutils.GetenvOrDefault("SAVE_FORMAT", defRawHTTPRequestFileSaveFormat),
 		"save filename format of raw http",
 	)
+	webListen := flag.String(
+		"web-listen",
+		envutils.GetenvOrDefault("WEB_LISTEN", ""),
+		"web dashboard listen addr (default: debug port + 1)",
+	)
 	version := flag.Bool("version", false, "display version information")
 	flag.Parse() //nolint:revive
 
@@ -56,6 +66,8 @@ func Run() error {
 
 		return nil
 	}
+
+	store := requeststore.New(defWebDashboardMaxRequests)
 
 	server, err := New(
 		WithListenAddr(*listenAddr),
@@ -67,6 +79,7 @@ func Run() error {
 		WithColor(*color),
 		WithSaveRawHTTPRequest(*saveRawHTTPRequest),
 		WithRawHTTPRequestFileSaveFormat(*saveFormat),
+		WithStore(store),
 	)
 	if err != nil {
 		return fmt.Errorf("server init error: %w", err)
@@ -78,6 +91,18 @@ func Run() error {
 		}
 	}()
 
+	webListenAddr := *webListen
+	if webListenAddr == "" {
+		webListenAddr = calculateWebPort(*listenAddr)
+	}
+	webServer := webui.New(store, webListenAddr, *listenAddr)
+
+	go func() {
+		if webErr := webServer.Start(); webErr != nil {
+			log.Printf("web dashboard error: %v", webErr)
+		}
+	}()
+
 	closed := make(chan struct{})
 
 	go func() {
@@ -85,7 +110,12 @@ func Run() error {
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 		<-sig
 
-		log.Println("stopping server")
+		log.Println("stopping servers")
+
+		if webErr := webServer.Stop(); webErr != nil {
+			log.Printf("web dashboard stop error: %v", webErr)
+		}
+
 		if err = server.Stop(); err != nil {
 			log.Printf("server stop error: %v", err)
 		}
@@ -101,4 +131,18 @@ func Run() error {
 	log.Println("exit, all clear")
 
 	return nil
+}
+
+func calculateWebPort(listenAddr string) string {
+	parts := strings.Split(listenAddr, ":")
+	if len(parts) != 2 {
+		return ":9003"
+	}
+
+	port, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return ":9003"
+	}
+
+	return fmt.Sprintf("%s:%d", parts[0], port+1)
 }
