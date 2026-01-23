@@ -483,31 +483,53 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 						break
 					}
 
-					partData, _ := io.ReadAll(part)
-					_ = part.Close()
-
 					if part.FileName() == "" {
-						// Regular form field
+						// Regular form field - read all (typically small)
+						fieldData, _ := io.ReadAll(part)
+						_ = part.Close()
 						fieldName := part.FormName()
-						formFields[fieldName] = append(formFields[fieldName], string(partData))
+						formFields[fieldName] = append(formFields[fieldName], string(fieldData))
 					} else {
-						// File upload
+						// File upload - stream and limit what we keep in memory
 						fi := fileInfo{
 							FieldName:   part.FormName(),
 							Filename:    part.FileName(),
-							Size:        len(partData),
 							ContentType: part.Header.Get(headerContentType),
 						}
 
-						// Show content for small text files
-						if fi.Size <= maxContentDisplay && isTextContentType(fi.ContentType) {
-							fi.Content = string(partData)
+						isImage := isImageContentType(fi.ContentType)
+						isText := isTextContentType(fi.ContentType)
+
+						// Determine buffer limit based on content type
+						var bufferLimit int64
+						switch {
+						case isImage:
+							bufferLimit = maxImagePreviewSize
+						case isText:
+							bufferLimit = maxContentDisplay
+						default:
+							bufferLimit = 0 // Don't buffer binary non-images
 						}
 
-						// Store raw data for images (for WebUI preview)
-						// Only store if under maxImagePreviewSize to prevent memory issues
-						if isImageContentType(fi.ContentType) && fi.Size <= maxImagePreviewSize {
-							fi.RawData = partData
+						// Read only up to buffer limit
+						var previewData []byte
+						if bufferLimit > 0 {
+							limitReader := io.LimitReader(part, bufferLimit)
+							previewData, _ = io.ReadAll(limitReader)
+						}
+
+						// Discard remaining bytes while counting total size
+						remainingBytes, _ := io.Copy(io.Discard, part)
+						_ = part.Close()
+
+						fi.Size = len(previewData) + int(remainingBytes)
+
+						// Store preview data only if file is within limits
+						if isText && fi.Size <= maxContentDisplay {
+							fi.Content = string(previewData)
+						}
+						if isImage && fi.Size <= maxImagePreviewSize {
+							fi.RawData = previewData
 						}
 
 						files = append(files, fi)
