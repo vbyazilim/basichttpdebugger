@@ -242,6 +242,44 @@ func TestDebugHandler(t *testing.T) {
 		assert.Contains(t, s, body)
 	})
 
+	t.Run("POST request with malformed Content-Type reports parse error", func(t *testing.T) {
+		out := filepath.Join(t.TempDir(), "out.log")
+		server, err := httpserver.New(httpserver.WithOutputWriter(out))
+		require.NoError(t, err)
+
+		body := `whatever`
+		req := httptest.NewRequest(http.MethodPost, "/webhook", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json; charset=") // missing param value
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Code)
+
+		got, errR := os.ReadFile(out)
+		require.NoError(t, errR)
+		assert.Contains(t, string(got), "mime.ParseMediaType error")
+	})
+
+	t.Run("POST request with empty Content-Type does not report parse error", func(t *testing.T) {
+		out := filepath.Join(t.TempDir(), "out.log")
+		server, err := httpserver.New(httpserver.WithOutputWriter(out))
+		require.NoError(t, err)
+
+		body := `raw payload without content type`
+		req := httptest.NewRequest(http.MethodPost, "/webhook", strings.NewReader(body))
+		req.Header.Del("Content-Type")
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Code)
+
+		got, errR := os.ReadFile(out)
+		require.NoError(t, errR)
+		s := string(got)
+		assert.NotContains(t, s, "mime.ParseMediaType error")
+		assert.Contains(t, s, body)
+	})
+
 	t.Run("POST request with invalid JSON and charset reports unmarshal error", func(t *testing.T) {
 		out := filepath.Join(t.TempDir(), "out.log")
 		server, err := httpserver.New(httpserver.WithOutputWriter(out))

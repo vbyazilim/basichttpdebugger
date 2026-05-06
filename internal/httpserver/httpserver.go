@@ -366,7 +366,17 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 
 			bodyAsString = string(body)
 
-			mediaType, mediaParams, _ := mime.ParseMediaType(requestContentType)
+			mediaType, mediaParams, mediaErr := mime.ParseMediaType(requestContentType)
+			if mediaErr != nil && requestContentType != "" {
+				txtErrorMedia := colorError.Sprintf("mime.ParseMediaType error: %s", mediaErr.Error())
+				t.AppendRow(table.Row{txtErrorMedia, txtErrorMedia}, table.RowConfig{
+					AutoMerge:      true,
+					AutoMergeAlign: text.AlignLeft,
+				})
+				t.AppendSeparator()
+
+				goto RENDER
+			}
 
 			switch mediaType {
 			case "application/json":
