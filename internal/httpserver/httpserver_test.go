@@ -176,6 +176,35 @@ func TestDebugHandler(t *testing.T) {
 		assert.Contains(t, rec.Body.String(), "OK")
 	})
 
+	t.Run("POST request with JSON body and charset", func(t *testing.T) {
+		server, err := httpserver.New()
+		require.NoError(t, err)
+
+		body := `{"name": "test", "value": 123}`
+		req := httptest.NewRequest(http.MethodPost, "/webhook", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json; charset=utf-8")
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), "OK")
+	})
+
+	t.Run("POST request with invalid JSON and charset falls back gracefully", func(t *testing.T) {
+		server, err := httpserver.New()
+		require.NoError(t, err)
+
+		body := `not-valid-json`
+		req := httptest.NewRequest(http.MethodPost, "/webhook", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json; charset=utf-8")
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
 	t.Run("POST request with plain text body", func(t *testing.T) {
 		server, err := httpserver.New()
 		require.NoError(t, err)
