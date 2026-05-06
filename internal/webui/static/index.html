@@ -300,6 +300,65 @@
             font-style: italic;
         }
 
+        .section-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .copy-btn {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 0.25rem 0.6rem;
+            font-size: 0.75rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+            line-height: 1;
+            white-space: nowrap;
+        }
+
+        .copy-btn:hover {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+
+        .copy-btn.copied {
+            background: #4ade80;
+            color: #0d1117;
+            border-color: #4ade80;
+        }
+
+        .headers-table .header-value-cell {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+
+        .headers-table .header-value-text {
+            flex: 1;
+            min-width: 0;
+            word-break: break-all;
+        }
+
+        .headers-table .copy-btn {
+            padding: 0.1rem 0.45rem;
+            font-size: 0.7rem;
+            opacity: 0;
+            transition: opacity 0.15s, background 0.15s, color 0.15s, border-color 0.15s;
+            flex-shrink: 0;
+        }
+
+        .headers-table tr:hover .copy-btn,
+        .headers-table .copy-btn.copied {
+            opacity: 1;
+        }
+
         .form-data-table {
             width: 100%;
             border-collapse: collapse;
@@ -515,6 +574,59 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        function copyToClipboard(text) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                return navigator.clipboard.writeText(text);
+            }
+            return new Promise((resolve, reject) => {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.setAttribute('readonly', '');
+                ta.style.position = 'absolute';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy') ? resolve() : reject(new Error('copy command failed'));
+                } catch (e) {
+                    reject(e);
+                } finally {
+                    document.body.removeChild(ta);
+                }
+            });
+        }
+
+        function flashCopied(btn) {
+            const original = btn.textContent;
+            btn.textContent = 'Copied!';
+            btn.classList.add('copied');
+            clearTimeout(btn._copyTimer);
+            btn._copyTimer = setTimeout(() => {
+                btn.textContent = original;
+                btn.classList.remove('copied');
+            }, 1500);
+        }
+
+        function wireCopyButtons(root) {
+            root.querySelectorAll('.copy-header-value').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const cell = btn.closest('.header-value-cell');
+                    const span = cell ? cell.querySelector('.header-value-text') : null;
+                    const text = span ? span.textContent : '';
+                    copyToClipboard(text).then(() => flashCopied(btn)).catch(err => console.error('copy failed:', err));
+                });
+            });
+
+            const bodyBtn = root.querySelector('#copyBodyBtn');
+            if (bodyBtn) {
+                bodyBtn.addEventListener('click', () => {
+                    const target = root.querySelector('.body-section-content');
+                    const text = target ? target.textContent.trim() : '';
+                    copyToClipboard(text).then(() => flashCopied(bodyBtn)).catch(err => console.error('copy failed:', err));
+                });
+            }
         }
 
         function formatFileSize(bytes) {
@@ -838,9 +950,15 @@
                 .map(([key, value]) => `
                     <tr>
                         <td>${escapeHtml(key)}</td>
-                        <td>${escapeHtml(value)}</td>
+                        <td>
+                            <div class="header-value-cell">
+                                <span class="header-value-text">${escapeHtml(value)}</span>
+                                <button class="copy-btn copy-header-value" type="button" title="Copy value">Copy</button>
+                            </div>
+                        </td>
                     </tr>
                 `).join('');
+            const hasBody = !!req.body || (req.files && req.files.length > 0);
 
             detail.innerHTML = `
                 <div class="detail-header">
@@ -885,12 +1003,16 @@
                 </div>
 
                 <div class="detail-section">
-                    <h3>Body</h3>
-                    ${renderBodyContent(req.body, headers, req.files)}
+                    <div class="section-title">
+                        <h3>Body</h3>
+                        ${hasBody ? '<button class="copy-btn" id="copyBodyBtn" type="button" title="Copy body">Copy</button>' : ''}
+                    </div>
+                    <div class="body-section-content">${renderBodyContent(req.body, headers, req.files)}</div>
                 </div>
             `;
 
             document.getElementById('replayBtn').addEventListener('click', () => replayRequest(req.id));
+            wireCopyButtons(detail);
             detail.style.display = 'block';
         }
 
