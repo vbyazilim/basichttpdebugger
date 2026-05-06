@@ -366,9 +366,11 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 
 			bodyAsString = string(body)
 
-			switch {
-			case strings.HasPrefix(requestContentType, "application/json"):
-				var jsonBody map[string]any
+			mediaType, mediaParams, _ := mime.ParseMediaType(requestContentType)
+
+			switch mediaType {
+			case "application/json":
+				var jsonBody any
 				if err = json.Unmarshal(body, &jsonBody); err != nil {
 					txtErrorUnmarshal := colorError.Sprintf("json.Unmarshal error: %s", err.Error())
 					t.AppendRow(table.Row{txtErrorUnmarshal, txtErrorUnmarshal}, table.RowConfig{
@@ -393,7 +395,7 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 				}
 
 				payloadAfterTable = string(prettyJSON)
-			case strings.HasPrefix(requestContentType, "application/x-www-form-urlencoded"):
+			case "application/x-www-form-urlencoded":
 				formData, errForm := url.ParseQuery(bodyAsString)
 				if errForm != nil {
 					txtErrorForm := colorError.Sprintf("url.ParseQuery error: %s", errForm.Error())
@@ -424,20 +426,8 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 					valueStr := colorPayload.Sprint(strings.Join(values, ", "))
 					t.AppendRow(table.Row{key, valueStr})
 				}
-			case strings.HasPrefix(requestContentType, "multipart/form-data"):
-				_, params, errMedia := mime.ParseMediaType(requestContentType)
-				if errMedia != nil {
-					txtErrorMedia := colorError.Sprintf("mime.ParseMediaType error: %s", errMedia.Error())
-					t.AppendRow(table.Row{txtErrorMedia, txtErrorMedia}, table.RowConfig{
-						AutoMerge:      true,
-						AutoMergeAlign: text.AlignLeft,
-					})
-					t.AppendSeparator()
-
-					goto RENDER
-				}
-
-				boundary := params["boundary"]
+			case "multipart/form-data":
+				boundary := mediaParams["boundary"]
 				if boundary == "" {
 					txtErrorBoundary := colorError.Sprint("multipart boundary not found")
 					t.AppendRow(table.Row{txtErrorBoundary, txtErrorBoundary}, table.RowConfig{
