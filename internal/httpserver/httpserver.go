@@ -300,6 +300,7 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 
 		var bodyAsString string
 		var storeFiles []requeststore.FileAttachment
+		var payloadAfterTable string
 
 		switch r.Method {
 		case http.MethodPost, http.MethodPut, http.MethodPatch:
@@ -391,12 +392,7 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 					goto RENDER
 				}
 
-				t.AppendSeparator()
-				payloadJSON := colorPayload.Sprintf("%s", prettyJSON)
-				t.AppendRow(table.Row{payloadJSON, payloadJSON}, table.RowConfig{
-					AutoMerge:      true,
-					AutoMergeAlign: text.AlignLeft,
-				})
+				payloadAfterTable = string(prettyJSON)
 			case strings.HasPrefix(requestContentType, "application/x-www-form-urlencoded"):
 				formData, errForm := url.ParseQuery(bodyAsString)
 				if errForm != nil {
@@ -600,19 +596,17 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 					storeFiles = append(storeFiles, sf)
 				}
 			default:
-				payloadText := colorPayload.Sprintf("%s", body)
-				t.AppendSeparator()
-				t.AppendRow(
-					table.Row{payloadText, payloadText},
-					table.RowConfig{
-						AutoMerge:      true,
-						AutoMergeAlign: text.AlignLeft,
-					},
-				)
+				payloadAfterTable = bodyAsString
 			}
 		}
 	RENDER:
 		t.Render()
+
+		if payloadAfterTable != "" {
+			options.drawLine()
+			fmt.Fprintln(options.writer, colorPayload.Sprintf("%s", payloadAfterTable))
+			options.drawLine()
+		}
 
 		mwr := io.MultiWriter(options.writer)
 		var rawHRw *os.File
