@@ -375,6 +375,8 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 				})
 				t.AppendSeparator()
 
+				payloadAfterTable = bodyAsString
+
 				goto RENDER
 			}
 

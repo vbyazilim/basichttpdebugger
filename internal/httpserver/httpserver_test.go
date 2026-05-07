@@ -257,7 +257,9 @@ func TestDebugHandler(t *testing.T) {
 
 		got, errR := os.ReadFile(out)
 		require.NoError(t, errR)
-		assert.Contains(t, string(got), "mime.ParseMediaType error")
+		s := string(got)
+		assert.Contains(t, s, "mime.ParseMediaType error")
+		assert.Contains(t, s, body) // body still rendered below the table
 	})
 
 	t.Run("POST request with empty Content-Type does not report parse error", func(t *testing.T) {

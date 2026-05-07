@@ -272,7 +272,7 @@
         }
         
         .headers-table tr:hover {
-            background-color: white;
+            background-color: var(--highlight-bg);
         }
 
         .headers-table td {
@@ -359,8 +359,15 @@
         }
 
         .headers-table tr:hover .copy-btn,
+        .headers-table tr:focus-within .copy-btn,
+        .headers-table .copy-btn:focus-visible,
         .headers-table .copy-btn.copied {
             opacity: 1;
+        }
+
+        .copy-btn:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
         }
 
         .form-data-table {
