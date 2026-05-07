@@ -189,6 +189,7 @@ func TestDebugHandler(t *testing.T) {
 
 		server.HTTPServer.Handler.ServeHTTP(rec, req)
 		require.Equal(t, http.StatusOK, rec.Code)
+		require.NoError(t, server.OutputWriter.Close())
 
 		got, errR := os.ReadFile(out)
 		require.NoError(t, errR)
@@ -212,6 +213,7 @@ func TestDebugHandler(t *testing.T) {
 
 		server.HTTPServer.Handler.ServeHTTP(rec, req)
 		require.Equal(t, http.StatusOK, rec.Code)
+		require.NoError(t, server.OutputWriter.Close())
 
 		got, errR := os.ReadFile(out)
 		require.NoError(t, errR)
@@ -233,6 +235,7 @@ func TestDebugHandler(t *testing.T) {
 
 		server.HTTPServer.Handler.ServeHTTP(rec, req)
 		require.Equal(t, http.StatusOK, rec.Code)
+		require.NoError(t, server.OutputWriter.Close())
 
 		got, errR := os.ReadFile(out)
 		require.NoError(t, errR)
@@ -254,6 +257,7 @@ func TestDebugHandler(t *testing.T) {
 
 		server.HTTPServer.Handler.ServeHTTP(rec, req)
 		require.Equal(t, http.StatusOK, rec.Code)
+		require.NoError(t, server.OutputWriter.Close())
 
 		got, errR := os.ReadFile(out)
 		require.NoError(t, errR)
@@ -274,6 +278,7 @@ func TestDebugHandler(t *testing.T) {
 
 		server.HTTPServer.Handler.ServeHTTP(rec, req)
 		require.Equal(t, http.StatusOK, rec.Code)
+		require.NoError(t, server.OutputWriter.Close())
 
 		got, errR := os.ReadFile(out)
 		require.NoError(t, errR)
@@ -294,6 +299,7 @@ func TestDebugHandler(t *testing.T) {
 
 		server.HTTPServer.Handler.ServeHTTP(rec, req)
 		require.Equal(t, http.StatusOK, rec.Code)
+		require.NoError(t, server.OutputWriter.Close())
 
 		got, errR := os.ReadFile(out)
 		require.NoError(t, errR)
