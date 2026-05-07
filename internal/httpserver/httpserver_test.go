@@ -306,6 +306,7 @@ func TestDebugHandler(t *testing.T) {
 		s := string(got)
 
 		assert.Contains(t, s, "json.Unmarshal error")
+		assert.Contains(t, s, body) // raw body still rendered below the table
 	})
 
 	t.Run("POST request with plain text body", func(t *testing.T) {

@@ -391,6 +391,8 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 					})
 					t.AppendSeparator()
 
+					payloadAfterTable = bodyAsString
+
 					goto RENDER
 				}
 
@@ -402,6 +404,8 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 						AutoMergeAlign: text.AlignLeft,
 					})
 					t.AppendSeparator()
+
+					payloadAfterTable = bodyAsString
 
 					goto RENDER
 				}

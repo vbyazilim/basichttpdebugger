@@ -640,7 +640,7 @@
             if (bodyBtn) {
                 bodyBtn.addEventListener('click', () => {
                     const target = root.querySelector('.body-section-content');
-                    const text = target ? target.textContent.trim() : '';
+                    const text = target ? target.textContent : '';
                     copyToClipboard(text).then(() => flashCopied(bodyBtn)).catch(err => console.error('copy failed:', err));
                 });
             }
