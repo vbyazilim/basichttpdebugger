@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"net/textproto"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -174,6 +175,138 @@ func TestDebugHandler(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Contains(t, rec.Body.String(), "OK")
+	})
+
+	t.Run("POST request with JSON body and charset pretty-prints below the table", func(t *testing.T) {
+		out := filepath.Join(t.TempDir(), "out.log")
+		server, err := httpserver.New(httpserver.WithOutputWriter(out))
+		require.NoError(t, err)
+
+		body := `{"name":"test","value":123}`
+		req := httptest.NewRequest(http.MethodPost, "/webhook", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json; charset=utf-8")
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Code)
+		require.NoError(t, server.OutputWriter.Close())
+
+		got, errR := os.ReadFile(out)
+		require.NoError(t, errR)
+		s := string(got)
+
+		assert.Contains(t, s, "application/json; charset=utf-8")
+		assert.Contains(t, s, "\"name\": \"test\"")
+		assert.Contains(t, s, "\"value\": 123")
+		assert.NotContains(t, s, "json.Unmarshal error")
+	})
+
+	t.Run("POST request with JSON array body pretty-prints", func(t *testing.T) {
+		out := filepath.Join(t.TempDir(), "out.log")
+		server, err := httpserver.New(httpserver.WithOutputWriter(out))
+		require.NoError(t, err)
+
+		body := `[1,2,3]`
+		req := httptest.NewRequest(http.MethodPost, "/webhook", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Code)
+		require.NoError(t, server.OutputWriter.Close())
+
+		got, errR := os.ReadFile(out)
+		require.NoError(t, errR)
+		s := string(got)
+
+		assert.NotContains(t, s, "json.Unmarshal error")
+		assert.Contains(t, s, "[\n    1,\n    2,\n    3\n]")
+	})
+
+	t.Run("POST request with json-patch+json is not parsed as JSON", func(t *testing.T) {
+		out := filepath.Join(t.TempDir(), "out.log")
+		server, err := httpserver.New(httpserver.WithOutputWriter(out))
+		require.NoError(t, err)
+
+		body := `[{"op":"add","path":"/foo","value":"bar"}]`
+		req := httptest.NewRequest(http.MethodPost, "/webhook", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json-patch+json")
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Code)
+		require.NoError(t, server.OutputWriter.Close())
+
+		got, errR := os.ReadFile(out)
+		require.NoError(t, errR)
+		s := string(got)
+
+		assert.NotContains(t, s, "json.Unmarshal error")
+		assert.Contains(t, s, body)
+	})
+
+	t.Run("POST request with malformed Content-Type reports parse error", func(t *testing.T) {
+		out := filepath.Join(t.TempDir(), "out.log")
+		server, err := httpserver.New(httpserver.WithOutputWriter(out))
+		require.NoError(t, err)
+
+		body := `whatever`
+		req := httptest.NewRequest(http.MethodPost, "/webhook", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json; charset=") // missing param value
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Code)
+		require.NoError(t, server.OutputWriter.Close())
+
+		got, errR := os.ReadFile(out)
+		require.NoError(t, errR)
+		s := string(got)
+		assert.Contains(t, s, "mime.ParseMediaType error")
+		assert.Contains(t, s, body) // body still rendered below the table
+	})
+
+	t.Run("POST request with empty Content-Type does not report parse error", func(t *testing.T) {
+		out := filepath.Join(t.TempDir(), "out.log")
+		server, err := httpserver.New(httpserver.WithOutputWriter(out))
+		require.NoError(t, err)
+
+		body := `raw payload without content type`
+		req := httptest.NewRequest(http.MethodPost, "/webhook", strings.NewReader(body))
+		req.Header.Del("Content-Type")
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Code)
+		require.NoError(t, server.OutputWriter.Close())
+
+		got, errR := os.ReadFile(out)
+		require.NoError(t, errR)
+		s := string(got)
+		assert.NotContains(t, s, "mime.ParseMediaType error")
+		assert.Contains(t, s, body)
+	})
+
+	t.Run("POST request with invalid JSON and charset reports unmarshal error", func(t *testing.T) {
+		out := filepath.Join(t.TempDir(), "out.log")
+		server, err := httpserver.New(httpserver.WithOutputWriter(out))
+		require.NoError(t, err)
+
+		body := `not-valid-json`
+		req := httptest.NewRequest(http.MethodPost, "/webhook", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json; charset=utf-8")
+		rec := httptest.NewRecorder()
+
+		server.HTTPServer.Handler.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Code)
+		require.NoError(t, server.OutputWriter.Close())
+
+		got, errR := os.ReadFile(out)
+		require.NoError(t, errR)
+		s := string(got)
+
+		assert.Contains(t, s, "json.Unmarshal error")
+		assert.Contains(t, s, body) // raw body still rendered below the table
 	})
 
 	t.Run("POST request with plain text body", func(t *testing.T) {

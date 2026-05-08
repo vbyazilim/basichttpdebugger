@@ -18,7 +18,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -292,7 +292,7 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 		for key := range r.Header {
 			headerKeys = append(headerKeys, key)
 		}
-		sort.Strings(headerKeys)
+		slices.Sort(headerKeys)
 
 		for _, key := range headerKeys {
 			t.AppendRow(table.Row{key, strings.Join(r.Header[key], ",")})
@@ -300,6 +300,7 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 
 		var bodyAsString string
 		var storeFiles []requeststore.FileAttachment
+		var payloadAfterTable string
 
 		switch r.Method {
 		case http.MethodPost, http.MethodPut, http.MethodPatch:
@@ -365,9 +366,23 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 
 			bodyAsString = string(body)
 
-			switch {
-			case requestContentType == "application/json":
-				var jsonBody map[string]any
+			mediaType, mediaParams, mediaErr := mime.ParseMediaType(requestContentType)
+			if mediaErr != nil && requestContentType != "" {
+				txtErrorMedia := colorError.Sprintf("mime.ParseMediaType error: %s", mediaErr.Error())
+				t.AppendRow(table.Row{txtErrorMedia, txtErrorMedia}, table.RowConfig{
+					AutoMerge:      true,
+					AutoMergeAlign: text.AlignLeft,
+				})
+				t.AppendSeparator()
+
+				payloadAfterTable = bodyAsString
+
+				goto RENDER
+			}
+
+			switch mediaType {
+			case "application/json":
+				var jsonBody any
 				if err = json.Unmarshal(body, &jsonBody); err != nil {
 					txtErrorUnmarshal := colorError.Sprintf("json.Unmarshal error: %s", err.Error())
 					t.AppendRow(table.Row{txtErrorUnmarshal, txtErrorUnmarshal}, table.RowConfig{
@@ -375,6 +390,8 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 						AutoMergeAlign: text.AlignLeft,
 					})
 					t.AppendSeparator()
+
+					payloadAfterTable = bodyAsString
 
 					goto RENDER
 				}
@@ -388,16 +405,13 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 					})
 					t.AppendSeparator()
 
+					payloadAfterTable = bodyAsString
+
 					goto RENDER
 				}
 
-				t.AppendSeparator()
-				payloadJSON := colorPayload.Sprintf("%s", prettyJSON)
-				t.AppendRow(table.Row{payloadJSON, payloadJSON}, table.RowConfig{
-					AutoMerge:      true,
-					AutoMergeAlign: text.AlignLeft,
-				})
-			case strings.HasPrefix(requestContentType, "application/x-www-form-urlencoded"):
+				payloadAfterTable = string(prettyJSON)
+			case "application/x-www-form-urlencoded":
 				formData, errForm := url.ParseQuery(bodyAsString)
 				if errForm != nil {
 					txtErrorForm := colorError.Sprintf("url.ParseQuery error: %s", errForm.Error())
@@ -421,27 +435,15 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 				for key := range formData {
 					formKeys = append(formKeys, key)
 				}
-				sort.Strings(formKeys)
+				slices.Sort(formKeys)
 
 				for _, key := range formKeys {
 					values := formData[key]
 					valueStr := colorPayload.Sprint(strings.Join(values, ", "))
 					t.AppendRow(table.Row{key, valueStr})
 				}
-			case strings.HasPrefix(requestContentType, "multipart/form-data"):
-				_, params, errMedia := mime.ParseMediaType(requestContentType)
-				if errMedia != nil {
-					txtErrorMedia := colorError.Sprintf("mime.ParseMediaType error: %s", errMedia.Error())
-					t.AppendRow(table.Row{txtErrorMedia, txtErrorMedia}, table.RowConfig{
-						AutoMerge:      true,
-						AutoMergeAlign: text.AlignLeft,
-					})
-					t.AppendSeparator()
-
-					goto RENDER
-				}
-
-				boundary := params["boundary"]
+			case "multipart/form-data":
+				boundary := mediaParams["boundary"]
 				if boundary == "" {
 					txtErrorBoundary := colorError.Sprint("multipart boundary not found")
 					t.AppendRow(table.Row{txtErrorBoundary, txtErrorBoundary}, table.RowConfig{
@@ -549,7 +551,7 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 					for key := range formFields {
 						fieldKeys = append(fieldKeys, key)
 					}
-					sort.Strings(fieldKeys)
+					slices.Sort(fieldKeys)
 
 					for _, key := range fieldKeys {
 						values := formFields[key]
@@ -600,19 +602,17 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 					storeFiles = append(storeFiles, sf)
 				}
 			default:
-				payloadText := colorPayload.Sprintf("%s", body)
-				t.AppendSeparator()
-				t.AppendRow(
-					table.Row{payloadText, payloadText},
-					table.RowConfig{
-						AutoMerge:      true,
-						AutoMergeAlign: text.AlignLeft,
-					},
-				)
+				payloadAfterTable = bodyAsString
 			}
 		}
 	RENDER:
 		t.Render()
+
+		if payloadAfterTable != "" {
+			options.drawLine()
+			fmt.Fprintln(options.writer, colorPayload.Sprintf("%s", payloadAfterTable))
+			options.drawLine()
+		}
 
 		mwr := io.MultiWriter(options.writer)
 		var rawHRw *os.File
@@ -628,7 +628,8 @@ func debugHandlerFunc(options *debugHandlerOptions) http.HandlerFunc {
 			}
 
 			mwr = io.MultiWriter(options.writer, rawHRw)
-			fmt.Fprintf(w, "Raw HTTP Request is saved to: %s\n", formattedFilename)
+			// response is text/plain and filename is sanitized in stringutils.GetFormattedFilename
+			fmt.Fprintf(w, "Raw HTTP Request is saved to: %s\n", formattedFilename) //nolint:gosec
 		}
 
 	WRITERHR:
@@ -855,7 +856,7 @@ func sanitizeBodyForDisplay(body, contentType string) string {
 			// Remove trailing boundary markers for size calculation
 			cleanContent := strings.TrimSuffix(content, "\r\n")
 			cleanContent = strings.TrimSuffix(cleanContent, "\n")
-			result.WriteString(fmt.Sprintf("[binary data: %s]", formatFileSize(len(cleanContent))))
+			fmt.Fprintf(&result, "[binary data: %s]", formatFileSize(len(cleanContent)))
 			// Preserve the trailing newlines
 			if strings.HasSuffix(content, "\r\n") {
 				result.WriteString("\r\n")
